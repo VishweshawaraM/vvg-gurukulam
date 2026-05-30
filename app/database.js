@@ -5,7 +5,7 @@
 */
 
 const DB_KEY     = 'vvg_database';
-const DB_VERSION = '3.0.0'; // Server-backed persistence
+const DB_VERSION = '3.1.0'; // 14 real Acharyas + new logo
 
 export const db = {
   get() {
@@ -82,125 +82,132 @@ export const db = {
     const acharyas = [
       {
         id: 'ach_1',
-        name: 'Acharya Keshav Bhatta',
-        sanskritName: 'आचार्यकेशवभट्टः',
-        specialization: 'Rigveda Samhita & Shatapatha Brahmana',
-        assignedGana: 'प्रथमगणः',
-        assignedGanaId: 'gan_1',
-        qualification: 'Veda Vidwan, Rashtriya Sanskrit Vidyapeetha',
-        contact: '+91 94481 23456',
-        email: 'keshav.bhatta@vvgurukulam.org',
-        joiningDate: '2012-06-01',
-        room: 'Acharya Kutira 1',
-        yearsExp: 14,
-        photo: null
+        name: 'Sanjaya Acharya',
+        sanskritName: 'सञ्जयाचार्यः',
+        specialization: 'Rigveda Samhita — Shakala Shakha',
+        assignedGana: 'तपः', assignedGanaId: 'gan_1',
+        yearsExperience: '', contact: '', email: 'sanjaya@vvgurukulam.org',
+        bio: 'Senior Acharya at Veda Vijnana Gurukulam.', photo: null
       },
       {
         id: 'ach_2',
-        name: 'Acharya Madhava Joshi',
-        sanskritName: 'आचार्यमाधवजोशी',
-        specialization: 'Sanskrit Vyakarana & Nyaya Shastra',
-        assignedGana: 'द्वितीयगणः',
-        assignedGanaId: 'gan_2',
-        qualification: 'Mahamahopadhyaya, Sampurnanand Sanskrit Vishwavidyalaya',
-        contact: '+91 94482 78901',
-        email: 'madhava.joshi@vvgurukulam.org',
-        joiningDate: '2015-05-15',
-        room: 'Acharya Kutira 2',
-        yearsExp: 11,
-        photo: null
+        name: 'Vinayaka Acharya',
+        sanskritName: 'विनायकाचार्यः',
+        specialization: 'Rigveda — Svarashastra & Pratishakhya',
+        assignedGana: 'तेजः', assignedGanaId: 'gan_2',
+        yearsExperience: '', contact: '', email: 'vinayaka@vvgurukulam.org',
+        bio: 'Expert in Vedic Svaras and intonation at VVG.', photo: null
       },
       {
         id: 'ach_3',
-        name: 'Acharya Vasudevan Namboodiri',
-        sanskritName: 'आचार्यवासुदेवन्नम्बूदिरी',
-        specialization: 'Samaveda Gana & Chandas Shastra',
-        assignedGana: 'तृतीयगणः',
-        assignedGanaId: 'gan_3',
-        qualification: 'Veda Ratna, Calicut University',
-        contact: '+91 98860 11223',
-        email: 'vasudevan.n@vvgurukulam.org',
-        joiningDate: '2016-08-01',
-        room: 'Acharya Kutira 3',
-        yearsExp: 10,
-        photo: null
+        name: 'Guruprasada Acharya',
+        sanskritName: 'गुरुप्रसादाचार्यः',
+        specialization: 'Rigveda — Pada Patha & Anukramani',
+        assignedGana: 'ओजः', assignedGanaId: 'gan_3',
+        yearsExperience: '', contact: '', email: 'guruprasada@vvgurukulam.org',
+        bio: 'Teaches Pada Patha and Vedic tradition at VVG.', photo: null
       },
       {
         id: 'ach_4',
-        name: 'Acharya Ramachandra Shastri',
-        sanskritName: 'आचार्यरामचन्द्रशास्त्री',
-        specialization: 'Krishna Yajurveda & Jyotisha Shastra',
-        assignedGana: 'चतुर्थगणः',
-        assignedGanaId: 'gan_4',
-        qualification: 'Veda Vidwan, Rashtrotthan Vedic Gurukula',
-        contact: '+91 94485 55667',
-        email: 'ramachandra.s@vvgurukulam.org',
-        joiningDate: '2010-04-10',
-        room: 'Acharya Kutira 4',
-        yearsExp: 16,
-        photo: null
+        name: 'Aruna Acharya',
+        sanskritName: 'अरुणाचार्यः',
+        specialization: 'Rigveda — Krama Patha & Vedic Prosody',
+        assignedGana: 'वर्चः', assignedGanaId: 'gan_4',
+        yearsExperience: '', contact: '', email: 'aruna@vvgurukulam.org',
+        bio: 'Specializes in advanced recitation modes.', photo: null
       },
       {
         id: 'ach_5',
-        name: 'Acharya Subrahmanya Dikshit',
-        sanskritName: 'आचार्यसुब्रह्मण्यदीक्षितः',
-        specialization: 'Atharvaveda & Kalpa Sutras',
-        assignedGana: 'पञ्चमगणः',
-        assignedGanaId: 'gan_5',
-        qualification: 'Veda Shiromani, Andhra Vedic Gurukula',
-        contact: '+91 95355 44120',
-        email: 'subrahmanya.d@vvgurukulam.org',
-        joiningDate: '2018-06-15',
-        room: 'Acharya Kutira 5',
-        yearsExp: 8,
-        photo: null
+        name: 'Shridhara Acharya',
+        sanskritName: 'श्रीधराचार्यः',
+        specialization: 'Sanskrit Vyakarana — Panini Ashtadhyayi',
+        assignedGana: 'श्रेयः', assignedGanaId: 'gan_5',
+        yearsExperience: '', contact: '', email: 'shridhara@vvgurukulam.org',
+        bio: 'Teaches Paninian grammar to all Ganas.', photo: null
       },
       {
         id: 'ach_6',
-        name: 'Acharya Narayana Bhattacharyya',
-        sanskritName: 'आचार्यनारायणभट्टाचार्यः',
-        specialization: 'Vedanta Bhashya & Upanishad Patha',
-        assignedGana: 'षष्ठगणः',
-        assignedGanaId: 'gan_6',
-        qualification: 'Mahamahopadhyaya, Sringeri Sharada Peetham',
-        contact: '+91 98445 67890',
-        email: 'narayana.b@vvgurukulam.org',
-        joiningDate: '2013-07-20',
-        room: 'Acharya Kutira 6',
-        yearsExp: 13,
-        photo: null
+        name: 'Mahadeva Acharya',
+        sanskritName: 'महादेवाचार्यः',
+        specialization: 'Vedanta & Upanishad Patha',
+        assignedGana: 'भ्राजः', assignedGanaId: 'gan_6',
+        yearsExperience: '', contact: '', email: 'mahadeva@vvgurukulam.org',
+        bio: 'Guides students in Vedantic philosophy.', photo: null
       },
       {
         id: 'ach_7',
-        name: 'Acharya Gopala Krishnan',
-        sanskritName: 'आचार्यगोपालकृष्णन्',
-        specialization: 'Mimamsa Shastra & Karma Kanda',
-        assignedGana: 'सप्तमगणः',
-        assignedGanaId: 'gan_7',
-        qualification: 'Veda Ratna, Thiruvananthapuram Sanskrit College',
-        contact: '+91 91234 56789',
-        email: 'gopala.k@vvgurukulam.org',
-        joiningDate: '2017-04-01',
-        room: 'Acharya Kutira 7',
-        yearsExp: 9,
-        photo: null
+        name: 'Narayana Acharya',
+        sanskritName: 'नारायणाचार्यः',
+        specialization: 'Kalpa Sutras — Shrauta & Grihya',
+        assignedGana: 'प्रेयः', assignedGanaId: 'gan_7',
+        yearsExperience: '', contact: '', email: 'narayana@vvgurukulam.org',
+        bio: 'Expert in ritual texts and Yajna tradition.', photo: null
       },
       {
         id: 'ach_8',
-        name: 'Acharya Vishwanatha Ganapati',
-        sanskritName: 'आचार्यविश्वनाथगणपतिः',
-        specialization: 'Dharmashastra & Smriti Patha',
-        assignedGana: 'अष्टमगणः',
-        assignedGanaId: 'gan_8',
-        qualification: 'Veda Vidwan, Kashi Sanskrit Gurukula',
-        contact: '+91 94490 01234',
-        email: 'vishwanatha.g@vvgurukulam.org',
-        joiningDate: '2019-06-10',
-        room: 'Acharya Kutira 8',
-        yearsExp: 7,
-        photo: null
+        name: 'Ramachandra Acharya',
+        sanskritName: 'रामचन्द्राचार्यः',
+        specialization: 'Rigveda — Jata & Ghana Patha',
+        assignedGana: 'यशः', assignedGanaId: 'gan_8',
+        yearsExperience: '', contact: '', email: 'ramachandra@vvgurukulam.org',
+        bio: 'Teaches the advanced recitation modes of Rigveda.', photo: null
+      },
+      {
+        id: 'ach_9',
+        name: 'Vasudeva Acharya',
+        sanskritName: 'वासुदेवाचार्यः',
+        specialization: 'Jyotisha & Vedanga',
+        assignedGana: '', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'vasudeva@vvgurukulam.org',
+        bio: 'Teaches Vedic astrology and the six Vedangas.', photo: null
+      },
+      {
+        id: 'ach_10',
+        name: 'Krishnamurthy Acharya',
+        sanskritName: 'कृष्णमूर्त्याचार्यः',
+        specialization: 'Mimamsa & Dharmashastra',
+        assignedGana: '', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'krishnamurthy@vvgurukulam.org',
+        bio: 'Expert in ritual philosophy and Dharmic texts.', photo: null
+      },
+      {
+        id: 'ach_11',
+        name: 'Subrahmanya Acharya',
+        sanskritName: 'सुब्रह्मण्याचार्यः',
+        specialization: 'Yoga & Sandhyavandana Vidhi',
+        assignedGana: '', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'subrahmanya@vvgurukulam.org',
+        bio: 'Leads daily Sandhyavandana and Yoga sessions.', photo: null
+      },
+      {
+        id: 'ach_12',
+        name: 'Lakshminarayana Acharya',
+        sanskritName: 'लक्ष्मीनारायणाचार्यः',
+        specialization: 'Stotras & Sanskrit Literature',
+        assignedGana: '', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'lakshminarayana@vvgurukulam.org',
+        bio: 'Teaches Sanskrit compositions and Stotra pathana.', photo: null
+      },
+      {
+        id: 'ach_13',
+        name: 'Shankara Acharya',
+        sanskritName: 'शङ्कराचार्यः',
+        specialization: 'Brahmacharya Ashrama & Student Conduct',
+        assignedGana: '', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'shankara@vvgurukulam.org',
+        bio: 'Oversees student discipline and Brahmacharya norms.', photo: null
+      },
+      {
+        id: 'ach_14',
+        name: 'Pradhana Acharyah',
+        sanskritName: 'प्रधानाचार्यः',
+        specialization: 'Gurukula Administration & Vedic Education',
+        assignedGana: 'सर्वगणाः', assignedGanaId: null,
+        yearsExperience: '', contact: '', email: 'admin@vvgurukulam.org',
+        bio: 'Principal of Veda Vijnana Gurukulam. Oversees all academic and spiritual activities.', photo: null
       }
     ];
+
 
     // ═══════════════════════════════════════════
     // 2. GANAS — 8 Traditional Student Divisions
