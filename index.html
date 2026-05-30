@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>वेदविज्ञानगुरुकुलम् — प्रबन्धनप्रणाली (VVG Management System)</title>
+    
+    <!-- Google Fonts for Traditional Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Cinzel: Elegant English typography for titles -->
+    <!-- Noto Serif Devanagari: High-quality traditional Devanagari support -->
+    <!-- Outfit: Clean geometric sans-serif for numbers, charts, and table lists -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;800&family=Noto+Serif+Devanagari:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Rozha+One&display=swap" rel="stylesheet">
+    
+    <!-- Link to Global Style -->
+    <link rel="stylesheet" href="/css/style.css">
+    
+    <!-- Favicon Icon (Elegant custom gold Lotus inside circle SVG) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23FAF7F0' stroke='%23C4A468' stroke-width='2'/%3E%3Cpath d='M50,25 C45,38 35,42 35,55 C35,68 45,72 50,75 C55,72 65,68 65,55 C65,42 55,38 50,25 Z' fill='%23E05C2B' opacity='0.85'/%3E%3Cpath d='M50,35 C40,43 41,55 45,62 C48,65 50,68 50,68 C50,68 52,65 55,62 C59,55 60,43 50,35 Z' fill='%23C4A468'/%3E%3Cpath d='M50,45 C45,50 46,58 48,62 C49,63 50,65 50,65 C50,65 51,63 52,62 C54,58 55,50 50,45 Z' fill='%23FAF7F0'/%3E%3C/svg%3E">
+</head>
+<body>
+
+    <!-- Main Mounting Node -->
+    <div id="app-mount">
+        <!-- Initial Beautiful Spiritual Loading Splash Screen -->
+        <div id="splash-loader">
+            <div class="splash-container">
+                <div class="splash-logo">
+                    <!-- Elegant SVG Logo representing Kalasha (sacred pot) + Lotus + Vedic Aura -->
+                    <svg viewBox="0 0 100 100" class="logo-svg">
+                        <defs>
+                            <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#FFF3D6" />
+                                <stop offset="100%" stop-color="#FAF7F0" stop-opacity="0" />
+                            </radialGradient>
+                        </defs>
+                        <!-- Radiant Sun Background -->
+                        <circle cx="50" cy="50" r="38" fill="url(#sun-glow)" />
+                        <!-- External Mandala Circle -->
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#C4A468" stroke-width="1.5" stroke-dasharray="3 3" />
+                        <!-- Main Gold Frame -->
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#C4A468" stroke-width="2" />
+                        
+                        <!-- Kalasha Body -->
+                        <path d="M38,62 C38,72 42,75 50,75 C58,75 62,72 62,62 C62,54 58,52 50,52 C42,52 38,54 38,62 Z" fill="#5C3C21" />
+                        <!-- Kalasha Neck -->
+                        <path d="M44,52 L56,52 L54,48 L46,48 Z" fill="#C4A468" />
+                        <!-- Kalasha Rim -->
+                        <rect x="42" y="45" width="16" height="3" rx="1.5" fill="#E05C2B" />
+                        
+                        <!-- Mango Leaves -->
+                        <path d="M32,45 C38,45 42,48 46,48 C42,44 38,36 34,40 Z" fill="#2C5E43" />
+                        <path d="M68,45 C62,45 58,48 54,48 C58,44 62,36 66,40 Z" fill="#2C5E43" />
+                        <path d="M50,45 C50,45 45,35 44,28 C50,34 50,45 50,45 Z" fill="#2C5E43" />
+                        <path d="M50,45 C50,45 55,35 56,28 C50,34 50,45 50,45 Z" fill="#2C5E43" />
+                        
+                        <!-- Coconut -->
+                        <path d="M45,45 C45,38 48,32 50,32 C52,32 55,38 55,45 Z" fill="#5C3C21" stroke="#FAF7F0" stroke-width="1" />
+                        
+                        <!-- Sacred Saffron Tilaka (Flame-like) -->
+                        <path d="M50,56 C49,60 48,63 48,65 C48,67 49,68 50,68 C51,68 52,67 52,65 C52,63 51,60 50,56 Z" fill="#E05C2B" />
+                        <circle cx="50" cy="62" r="1.5" fill="#FAF7F0" />
+                    </svg>
+                </div>
+                <h1 class="devanagari-title">वेदविज्ञानगुरुकुलम्</h1>
+                <h2 class="english-subtitle">Veda Vijnana Gurukulam</h2>
+                <div class="divider-motifs">
+                    <span class="motif-diamond">♦</span>
+                    <span class="motif-line"></span>
+                    <span class="motif-diamond">♦</span>
+                </div>
+                <p class="sanskrit-mantra">॥ विद्या ददाति विनयम् ॥</p>
+                <div class="loading-ring"><div></div><div></div><div></div><div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mount Main Controller -->
+    <script type="module" src="/app/app.js"></script>
+</body>
+</html>
