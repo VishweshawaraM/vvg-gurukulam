@@ -83,7 +83,7 @@ export function renderLogin(container, appInstance) {
                    onerror="this.outerHTML='<div style=\'width:42px;height:42px;border-radius:50%;background:var(--gold-leaf);display:flex;align-items:center;justify-content:center;font-size:1.2rem;\'>🕉</div>'">
             </div>
             <h2 class="login-form-title">प्रवेशद्वारम्</h2>
-            <p class="login-form-tagline">Gurukula Portal — Secure Access</p>
+            <p class="login-form-tagline">Enter your email and password to access the Gurukula Portal</p>
           </div>
 
           <!-- Server status indicator -->
@@ -136,26 +136,6 @@ export function renderLogin(container, appInstance) {
             </button>
           </form>
 
-          <!-- Acharya Quick Access -->
-          <details class="quick-access-section" id="quick-access">
-            <summary class="quick-access-title">
-              <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
-              आचार्य-लॉगिन (Acharya Quick Login)
-              <svg class="qa-arrow" viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;margin-left:auto;transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
-            </summary>
-            <div class="quick-cred-grid">
-              ${[
-                { label: 'प्रधानाचार्यः (Admin)',   email: 'admin@vvgurukulam.org',      pw: 'vvg@admin2026'  },
-                { label: 'कार्यालयः (Office)',       email: 'office@vvgurukulam.org',     pw: 'vvg@office2026' },
-                { label: 'सञ्जयाचार्यः',             email: 'sanjaya@vvgurukulam.org',    pw: 'vvg@sanjaya'    },
-                { label: 'विनायकाचार्यः',            email: 'vinayaka@vvgurukulam.org',   pw: 'vvg@vinayaka'   },
-                { label: 'गुरुप्रसादाचार्यः',       email: 'guruprasada@vvgurukulam.org',pw: 'vvg@guruprasada'},
-                { label: 'अरुणाचार्यः',              email: 'aruna@vvgurukulam.org',      pw: 'vvg@aruna'      },
-                { label: 'श्रीधराचार्यः',            email: 'shridhara@vvgurukulam.org',  pw: 'vvg@shridhara'  },
-                { label: 'महादेवाचार्यः',            email: 'mahadeva@vvgurukulam.org',   pw: 'vvg@mahadeva'   },
-              ].map(u => `
-                <button class="quick-cred-btn" data-email="${u.email}" data-pw="${u.pw}">
-                  <span class="qc-name">${u.label}</span>
                   <span class="qc-email">${u.email}</span>
                 </button>
               `).join('')}
@@ -198,15 +178,7 @@ export function renderLogin(container, appInstance) {
     pw.type = pw.type === 'password' ? 'text' : 'password';
   });
 
-  // ── Quick access buttons ────────────────────────────
-  container.querySelectorAll('.quick-cred-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      container.querySelector('#login-email').value    = btn.getAttribute('data-email');
-      container.querySelector('#login-password').value = btn.getAttribute('data-pw');
-      container.querySelector('#quick-access').removeAttribute('open');
-      submitLogin();
-    });
-  });
+
 
   // ── Form submit ─────────────────────────────────────
   container.querySelector('#login-form').addEventListener('submit', e => {
@@ -240,8 +212,9 @@ export function renderLogin(container, appInstance) {
     btnLoad.style.display = 'none';
 
     if (result.success) {
-      // Save session
       const user = result.user;
+
+      // Save base session
       sessionStorage.setItem('vvg_user', JSON.stringify({
         id:     user.id,
         name:   user.name,
@@ -252,13 +225,18 @@ export function renderLogin(container, appInstance) {
         timestamp: Date.now()
       }));
 
-      // Sync DB from server before entering app
+      // Sync DB from server
       await db.syncFromServer();
 
-      // Animate login card out
-      const card = container.querySelector('.login-form-card');
-      if (card) { card.style.transform = 'scale(0.95)'; card.style.opacity = '0'; }
-      setTimeout(() => router.navigate('dashboard'), 350);
+      // If Acharya → show Gana confirmation step
+      if (user.role === 'Acharya') {
+        showGanaConfirm(user);
+      } else {
+        // Admin / Office — go straight to dashboard
+        const card = container.querySelector('.login-form-card');
+        if (card) { card.style.transform = 'scale(0.95)'; card.style.opacity = '0'; }
+        setTimeout(() => router.navigate('dashboard'), 350);
+      }
     } else {
       showError(result.message || 'Invalid credentials. Please try again.');
       container.querySelector('#login-password').value = '';
@@ -272,5 +250,99 @@ export function renderLogin(container, appInstance) {
     errEl.style.display = 'block';
     errEl.style.animation = 'none';
     requestAnimationFrame(() => { errEl.style.animation = 'shake 0.4s ease'; });
+  }
+
+  /* ── Gana Confirmation Screen (for Acharyas after login) ── */
+  function showGanaConfirm(user) {
+    const ganas   = db.getAllGanas();
+    const myGana  = ganas.find(g => g.id === user.ganaId) || null;
+    const allStudentsInGana = myGana ? db.getAllStudents().filter(s => s.ganaId === myGana.id) : [];
+    const today   = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+    // Get today's timetable for the Acharya's Gana
+    const slots     = db.getTimeSlots ? db.getTimeSlots() : {};
+    const ttData    = myGana ? (db.get().timetable[myGana.id] || {}) : {};
+    const slotOrder = ['slot_1','slot_2','slot_3','slot_4','slot_5','slot_6','slot_7'];
+    const schedule  = slotOrder
+      .map(id => ({ id, info: slots[id] || {}, data: ttData[id] || null }))
+      .filter(s => s.data && s.data.subject);
+
+    const card = container.querySelector('.login-form-card');
+    if (card) { card.style.transform = 'scale(0.96)'; card.style.opacity = '0'; }
+
+    setTimeout(() => {
+      card.style.transition = 'all 0.3s ease';
+      card.style.transform  = 'scale(1)';
+      card.style.opacity    = '1';
+      card.style.maxWidth   = '520px';
+
+      card.innerHTML = `
+        <!-- Welcome header -->
+        <div style="text-align:center;margin-bottom:1.5rem;">
+          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--sandalwood-brown),#5A2E0E);border:3px solid var(--gold-solid);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;font-family:var(--font-header);font-size:1.8rem;font-weight:900;color:rgba(250,244,230,0.9);">
+            ${user.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}
+          </div>
+          <h2 style="font-family:var(--font-header);font-size:1.2rem;color:var(--charcoal-sandal);margin:0 0 2px;">
+            नमस्कारम्, ${user.nameSa || user.name}
+          </h2>
+          <p style="font-size:0.8rem;color:var(--sandal-light);">${today}</p>
+        </div>
+
+        <!-- Gana info -->
+        ${myGana ? `
+          <div style="background:linear-gradient(135deg,var(--sandalwood-brown)0%,#6B3C1A 100%);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:center;">
+            <div style="font-size:0.6rem;font-weight:900;letter-spacing:2px;color:rgba(212,175,55,0.7);text-transform:uppercase;margin-bottom:4px;">Your Assigned Gana</div>
+            <div style="font-family:var(--font-sanskrit-display);font-size:1.6rem;color:var(--gold-solid);font-weight:normal;margin-bottom:2px;">${myGana.name}</div>
+            <div style="font-size:0.75rem;color:rgba(250,244,230,0.7);">${myGana.englishName} · ${allStudentsInGana.length} Students</div>
+          </div>
+        ` : `
+          <div style="background:var(--gold-bg);border:1px solid var(--gold-leaf-pale);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.25rem;text-align:center;font-size:0.85rem;color:var(--sandal-light);">
+            You are registered as a Gurukula Faculty member without a specific Gana assignment.
+          </div>
+        `}
+
+        <!-- Today's Schedule -->
+        ${schedule.length > 0 ? `
+          <div style="margin-bottom:1.5rem;">
+            <div style="font-size:0.62rem;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--saffron-royal);margin-bottom:0.7rem;text-align:center;">
+              ॥ आजकस्य समयसारिणी — Today's Schedule ॥
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${schedule.slice(0,4).map(s => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.85rem;background:var(--bg-card);border:1px solid var(--sandal-div);border-radius:var(--radius-sm);font-size:0.78rem;">
+                  <div>
+                    <span class="devanagari-body" style="font-weight:700;color:var(--charcoal-sandal);">${s.data.subject}</span>
+                    <span style="color:var(--sandal-light);margin-left:6px;font-size:0.72rem;">${s.data.engSubject||''}</span>
+                  </div>
+                  <span style="color:var(--saffron-royal);font-weight:700;font-size:0.72rem;white-space:nowrap;">${s.info.time||s.id}</span>
+                </div>
+              `).join('')}
+              ${schedule.length > 4 ? `<p style="text-align:center;font-size:0.72rem;color:var(--sandal-light);margin:2px 0 0;">+${schedule.length-4} more sessions — view full timetable in dashboard</p>` : ''}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Enter button -->
+        <button id="btn-enter-dashboard" class="btn btn-saffron login-submit-btn" style="width:100%;padding:0.9rem;">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          गुरुकुले प्रवेशः — Enter Dashboard
+        </button>
+
+        <p style="text-align:center;font-size:0.72rem;color:var(--sandal-light);margin-top:0.75rem;">
+          Not ${user.name}? <button id="btn-switch-user" style="background:none;border:none;color:var(--saffron-royal);font-size:0.72rem;cursor:pointer;font-weight:700;text-decoration:underline;">Switch Account</button>
+        </p>
+      `;
+
+      card.querySelector('#btn-enter-dashboard').addEventListener('click', () => {
+        card.style.transform = 'scale(0.95)'; card.style.opacity = '0';
+        setTimeout(() => router.navigate('dashboard'), 350);
+      });
+
+      card.querySelector('#btn-switch-user').addEventListener('click', () => {
+        sessionStorage.removeItem('vvg_user');
+        card.style.transform = 'scale(0.96)'; card.style.opacity = '0';
+        setTimeout(() => router.navigate('login'), 350);
+      });
+    }, 350);
   }
 }
