@@ -1,6 +1,6 @@
 /* 
   Veda Vijnana Gurukulam Management System
-  Login Page v3.0 — Real Authentication | Stunning Hero | All Acharyas
+  Login Page v3.0 — Clean · Real Auth · Gana Welcome Screen
 */
 
 import { router } from '../router.js';
@@ -20,9 +20,8 @@ export function renderLogin(container, appInstance) {
   container.innerHTML = `
     <div class="login-bg">
 
-      <!-- ── Left Hero Panel ───────────────────────── -->
+      <!-- Left Hero Panel -->
       <div class="login-art-panel">
-        <!-- Layered background: mandala + grain -->
         <div class="aura-mandala"></div>
         <div class="login-grain-overlay"></div>
 
@@ -48,7 +47,6 @@ export function renderLogin(container, appInstance) {
             Channenahalli, Magadi Road, Bengaluru
           </div>
 
-          <!-- Divider -->
           <div class="login-hero-divider">
             <div></div><span>॥</span><div></div>
           </div>
@@ -59,40 +57,41 @@ export function renderLogin(container, appInstance) {
             <p class="login-shloka-en">${shlokas[0].en}</p>
           </div>
 
-          <!-- Live Stats -->
+          <!-- Stats -->
           <div class="login-stats-row">
             <div class="login-stat"><span class="login-stat-num">90+</span><span>छात्राः</span></div>
             <div class="login-stat-div"></div>
             <div class="login-stat"><span class="login-stat-num">8</span><span>गणाः</span></div>
             <div class="login-stat-div"></div>
-            <div class="login-stat"><span class="login-stat-num">20+</span><span>आचार्याः</span></div>
+            <div class="login-stat"><span class="login-stat-num">14</span><span>आचार्याः</span></div>
           </div>
         </div>
 
         <div class="login-hero-footer">© 2026 Veda Vijnana Gurukulam · All Rights Reserved</div>
       </div>
 
-      <!-- ── Right Login Panel ─────────────────────── -->
+      <!-- Right Login Panel -->
       <div class="login-form-panel">
-        <div class="login-form-card">
+        <div class="login-form-card" id="main-login-card">
 
           <!-- Header -->
           <div class="login-welcome">
             <div class="login-form-logo-small">
-              <img src="/assets/vvg_logo.png" alt="VVG" style="width:42px;height:42px;border-radius:50%;object-fit:contain;border:2px solid var(--gold-solid);background:#fff;padding:2px;"
-                   onerror="this.outerHTML='<div style=\'width:42px;height:42px;border-radius:50%;background:var(--gold-leaf);display:flex;align-items:center;justify-content:center;font-size:1.2rem;\'>🕉</div>'">
+              <img src="/assets/vvg_logo.png" alt="VVG"
+                   style="width:42px;height:42px;border-radius:50%;object-fit:contain;border:2px solid var(--gold-solid);background:#fff;padding:2px;"
+                   onerror="this.style.display='none'">
             </div>
             <h2 class="login-form-title">प्रवेशद्वारम्</h2>
             <p class="login-form-tagline">Enter your email and password to access the Gurukula Portal</p>
           </div>
 
-          <!-- Server status indicator -->
+          <!-- Server status -->
           <div id="server-status" class="server-status-bar">
             <span class="status-dot" id="status-dot"></span>
             <span id="status-text">Connecting to server…</span>
           </div>
 
-          <!-- Form -->
+          <!-- Login Form -->
           <form id="login-form" autocomplete="on">
             <div class="form-group">
               <label class="form-label" for="login-email">
@@ -136,11 +135,12 @@ export function renderLogin(container, appInstance) {
             </button>
           </form>
 
-                  <span class="qc-email">${u.email}</span>
-                </button>
-              `).join('')}
-            </div>
-          </details>
+          <!-- Help note -->
+          <div style="margin-top:1rem;padding:0.85rem 1rem;background:var(--gold-bg);border:1px solid var(--gold-leaf-pale);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--sandal-light);text-align:center;line-height:1.6;">
+            <strong style="color:var(--charcoal-sandal);display:block;margin-bottom:3px;">आचार्याः — Acharyas</strong>
+            Use your personal email and password provided by the administration.<br>
+            Contact office if you have not received your credentials.
+          </div>
 
         </div>
       </div>
@@ -148,18 +148,18 @@ export function renderLogin(container, appInstance) {
     </div>
   `;
 
-  // ── Check server status ─────────────────────────────
+  // ── Server status check ──────────────────────────────
   const dotEl  = container.querySelector('#status-dot');
   const textEl = container.querySelector('#status-text');
   fetch('/api/ping').then(r => r.json()).then(() => {
-    dotEl.style.background  = 'var(--forest-tulsi)';
-    textEl.textContent = 'Server online — Real authentication active';
+    dotEl.style.background = 'var(--forest-tulsi)';
+    textEl.textContent     = 'Server online — Real authentication active';
   }).catch(() => {
-    dotEl.style.background  = 'var(--agni-red)';
-    textEl.textContent = 'Server offline — Start server.js first';
+    dotEl.style.background = 'var(--agni-red)';
+    textEl.textContent     = 'Server offline — Start server.js first';
   });
 
-  // ── Shloka Carousel ────────────────────────────────
+  // ── Shloka Carousel ─────────────────────────────────
   const interval = setInterval(() => {
     const box = container.querySelector('#shloka-fade-box');
     if (!box) { clearInterval(interval); return; }
@@ -172,15 +172,13 @@ export function renderLogin(container, appInstance) {
     }, 600);
   }, 6000);
 
-  // ── Toggle password visibility ──────────────────────
+  // ── Password toggle ──────────────────────────────────
   container.querySelector('#toggle-pw').addEventListener('click', () => {
     const pw = container.querySelector('#login-password');
     pw.type = pw.type === 'password' ? 'text' : 'password';
   });
 
-
-
-  // ── Form submit ─────────────────────────────────────
+  // ── Form submit ──────────────────────────────────────
   container.querySelector('#login-form').addEventListener('submit', e => {
     e.preventDefault();
     submitLogin();
@@ -199,44 +197,42 @@ export function renderLogin(container, appInstance) {
       return;
     }
 
-    // Show loading state
-    btn.disabled   = true;
+    btn.disabled          = true;
     btnTxt.style.display  = 'none';
     btnLoad.style.display = 'flex';
     errEl.style.display   = 'none';
 
     const result = await db.serverLogin(email, password);
 
-    btn.disabled   = false;
+    btn.disabled          = false;
     btnTxt.style.display  = 'flex';
     btnLoad.style.display = 'none';
 
     if (result.success) {
       const user = result.user;
 
-      // Save base session
+      // Save session
       sessionStorage.setItem('vvg_user', JSON.stringify({
-        id:     user.id,
-        name:   user.name,
-        nameSa: user.nameSa || user.name,
-        role:   user.role,
-        email:  user.email,
-        ganaId: user.ganaId || null,
+        id:        user.id,
+        name:      user.name,
+        nameSa:    user.nameSa || user.name,
+        role:      user.role,
+        email:     user.email,
+        ganaId:    user.ganaId || null,
         timestamp: Date.now()
       }));
 
-      // Sync DB from server
       await db.syncFromServer();
 
-      // If Acharya → show Gana confirmation step
+      // Acharyas → Gana welcome screen; Admin/Office → dashboard
       if (user.role === 'Acharya') {
-        showGanaConfirm(user);
+        showGanaWelcome(user);
       } else {
-        // Admin / Office — go straight to dashboard
-        const card = container.querySelector('.login-form-card');
+        const card = container.querySelector('#main-login-card');
         if (card) { card.style.transform = 'scale(0.95)'; card.style.opacity = '0'; }
         setTimeout(() => router.navigate('dashboard'), 350);
       }
+
     } else {
       showError(result.message || 'Invalid credentials. Please try again.');
       container.querySelector('#login-password').value = '';
@@ -246,41 +242,49 @@ export function renderLogin(container, appInstance) {
 
   function showError(msg) {
     const errEl = container.querySelector('#login-error');
-    errEl.textContent   = msg;
-    errEl.style.display = 'block';
+    errEl.textContent     = msg;
+    errEl.style.display   = 'block';
     errEl.style.animation = 'none';
     requestAnimationFrame(() => { errEl.style.animation = 'shake 0.4s ease'; });
   }
 
-  /* ── Gana Confirmation Screen (for Acharyas after login) ── */
-  function showGanaConfirm(user) {
+  // ── Gana Welcome Screen (shown to Acharyas after login) ─
+  function showGanaWelcome(user) {
     const ganas   = db.getAllGanas();
     const myGana  = ganas.find(g => g.id === user.ganaId) || null;
-    const allStudentsInGana = myGana ? db.getAllStudents().filter(s => s.ganaId === myGana.id) : [];
-    const today   = new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const students = myGana ? db.getAllStudents().filter(s => s.ganaId === myGana.id) : [];
+    const today   = new Date().toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
 
-    // Get today's timetable for the Acharya's Gana
-    const slots     = db.getTimeSlots ? db.getTimeSlots() : {};
-    const ttData    = myGana ? (db.get().timetable[myGana.id] || {}) : {};
-    const slotOrder = ['slot_1','slot_2','slot_3','slot_4','slot_5','slot_6','slot_7'];
-    const schedule  = slotOrder
+    const slots    = db.getTimeSlots ? db.getTimeSlots() : {};
+    const ttData   = myGana ? (db.get().timetable[myGana.id] || {}) : {};
+    const slotIds  = ['slot_1','slot_2','slot_3','slot_4','slot_5','slot_6','slot_7'];
+    const schedule = slotIds
       .map(id => ({ id, info: slots[id] || {}, data: ttData[id] || null }))
       .filter(s => s.data && s.data.subject);
 
-    const card = container.querySelector('.login-form-card');
-    if (card) { card.style.transform = 'scale(0.96)'; card.style.opacity = '0'; }
+    const initials = user.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
+    const card = container.querySelector('#main-login-card');
+    card.style.transition = 'all 0.3s ease';
+    card.style.transform  = 'scale(0.95)';
+    card.style.opacity    = '0';
 
     setTimeout(() => {
-      card.style.transition = 'all 0.3s ease';
-      card.style.transform  = 'scale(1)';
-      card.style.opacity    = '1';
-      card.style.maxWidth   = '520px';
+      card.style.transform = 'scale(1)';
+      card.style.opacity   = '1';
 
       card.innerHTML = `
-        <!-- Welcome header -->
         <div style="text-align:center;margin-bottom:1.5rem;">
-          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--sandalwood-brown),#5A2E0E);border:3px solid var(--gold-solid);display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;font-family:var(--font-header);font-size:1.8rem;font-weight:900;color:rgba(250,244,230,0.9);">
-            ${user.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}
+          <div style="width:72px;height:72px;border-radius:50%;
+               background:linear-gradient(135deg,var(--sandalwood-brown),#5A2E0E);
+               border:3px solid var(--gold-solid);
+               display:flex;align-items:center;justify-content:center;
+               margin:0 auto 0.75rem;
+               font-family:var(--font-header);font-size:1.8rem;font-weight:900;
+               color:rgba(250,244,230,0.9);">
+            ${initials}
           </div>
           <h2 style="font-family:var(--font-header);font-size:1.2rem;color:var(--charcoal-sandal);margin:0 0 2px;">
             नमस्कारम्, ${user.nameSa || user.name}
@@ -288,61 +292,91 @@ export function renderLogin(container, appInstance) {
           <p style="font-size:0.8rem;color:var(--sandal-light);">${today}</p>
         </div>
 
-        <!-- Gana info -->
         ${myGana ? `
-          <div style="background:linear-gradient(135deg,var(--sandalwood-brown)0%,#6B3C1A 100%);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:center;">
-            <div style="font-size:0.6rem;font-weight:900;letter-spacing:2px;color:rgba(212,175,55,0.7);text-transform:uppercase;margin-bottom:4px;">Your Assigned Gana</div>
-            <div style="font-family:var(--font-sanskrit-display);font-size:1.6rem;color:var(--gold-solid);font-weight:normal;margin-bottom:2px;">${myGana.name}</div>
-            <div style="font-size:0.75rem;color:rgba(250,244,230,0.7);">${myGana.englishName} · ${allStudentsInGana.length} Students</div>
+          <div style="background:linear-gradient(135deg,var(--sandalwood-brown),#6B3C1A);
+               border-radius:var(--radius-md);padding:1rem 1.25rem;
+               margin-bottom:1.25rem;text-align:center;">
+            <div style="font-size:0.6rem;font-weight:900;letter-spacing:2px;
+                 color:rgba(212,175,55,0.7);text-transform:uppercase;margin-bottom:4px;">
+              Your Assigned Gana
+            </div>
+            <div style="font-family:var(--font-sanskrit-display);font-size:1.6rem;
+                 color:var(--gold-solid);margin-bottom:2px;">${myGana.name}</div>
+            <div style="font-size:0.75rem;color:rgba(250,244,230,0.7);">
+              ${myGana.englishName} &middot; ${students.length} Students
+            </div>
           </div>
         ` : `
-          <div style="background:var(--gold-bg);border:1px solid var(--gold-leaf-pale);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.25rem;text-align:center;font-size:0.85rem;color:var(--sandal-light);">
-            You are registered as a Gurukula Faculty member without a specific Gana assignment.
+          <div style="background:var(--gold-bg);border:1px solid var(--gold-leaf-pale);
+               border-radius:var(--radius-md);padding:1rem;margin-bottom:1.25rem;
+               text-align:center;font-size:0.85rem;color:var(--sandal-light);">
+            You are registered as Gurukula Faculty.
           </div>
         `}
 
-        <!-- Today's Schedule -->
         ${schedule.length > 0 ? `
           <div style="margin-bottom:1.5rem;">
-            <div style="font-size:0.62rem;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--saffron-royal);margin-bottom:0.7rem;text-align:center;">
+            <div style="font-size:0.62rem;font-weight:900;letter-spacing:2px;
+                 text-transform:uppercase;color:var(--saffron-royal);
+                 margin-bottom:0.7rem;text-align:center;">
               ॥ आजकस्य समयसारिणी — Today's Schedule ॥
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
-              ${schedule.slice(0,4).map(s => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.85rem;background:var(--bg-card);border:1px solid var(--sandal-div);border-radius:var(--radius-sm);font-size:0.78rem;">
+              ${schedule.slice(0, 4).map(s => `
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                     padding:0.5rem 0.85rem;background:var(--bg-card);
+                     border:1px solid var(--sandal-div);border-radius:var(--radius-sm);font-size:0.78rem;">
                   <div>
-                    <span class="devanagari-body" style="font-weight:700;color:var(--charcoal-sandal);">${s.data.subject}</span>
-                    <span style="color:var(--sandal-light);margin-left:6px;font-size:0.72rem;">${s.data.engSubject||''}</span>
+                    <span class="devanagari-body" style="font-weight:700;color:var(--charcoal-sandal);">
+                      ${s.data.subject}
+                    </span>
+                    <span style="color:var(--sandal-light);margin-left:6px;font-size:0.72rem;">
+                      ${s.data.engSubject || ''}
+                    </span>
                   </div>
-                  <span style="color:var(--saffron-royal);font-weight:700;font-size:0.72rem;white-space:nowrap;">${s.info.time||s.id}</span>
+                  <span style="color:var(--saffron-royal);font-weight:700;font-size:0.72rem;white-space:nowrap;">
+                    ${s.info.time || ''}
+                  </span>
                 </div>
               `).join('')}
-              ${schedule.length > 4 ? `<p style="text-align:center;font-size:0.72rem;color:var(--sandal-light);margin:2px 0 0;">+${schedule.length-4} more sessions — view full timetable in dashboard</p>` : ''}
+              ${schedule.length > 4 ? `
+                <p style="text-align:center;font-size:0.72rem;color:var(--sandal-light);margin:2px 0 0;">
+                  +${schedule.length - 4} more — view full timetable in dashboard
+                </p>
+              ` : ''}
             </div>
           </div>
         ` : ''}
 
-        <!-- Enter button -->
-        <button id="btn-enter-dashboard" class="btn btn-saffron login-submit-btn" style="width:100%;padding:0.9rem;">
-          <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <button id="btn-enter" class="btn btn-saffron login-submit-btn" style="width:100%;padding:0.9rem;">
+          <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
           गुरुकुले प्रवेशः — Enter Dashboard
         </button>
 
         <p style="text-align:center;font-size:0.72rem;color:var(--sandal-light);margin-top:0.75rem;">
-          Not ${user.name}? <button id="btn-switch-user" style="background:none;border:none;color:var(--saffron-royal);font-size:0.72rem;cursor:pointer;font-weight:700;text-decoration:underline;">Switch Account</button>
+          Not ${user.name}?
+          <button id="btn-switch" style="background:none;border:none;color:var(--saffron-royal);
+                  font-size:0.72rem;cursor:pointer;font-weight:700;text-decoration:underline;">
+            Switch Account
+          </button>
         </p>
       `;
 
-      card.querySelector('#btn-enter-dashboard').addEventListener('click', () => {
-        card.style.transform = 'scale(0.95)'; card.style.opacity = '0';
+      card.querySelector('#btn-enter').addEventListener('click', () => {
+        card.style.transform = 'scale(0.95)';
+        card.style.opacity   = '0';
         setTimeout(() => router.navigate('dashboard'), 350);
       });
 
-      card.querySelector('#btn-switch-user').addEventListener('click', () => {
+      card.querySelector('#btn-switch').addEventListener('click', () => {
         sessionStorage.removeItem('vvg_user');
-        card.style.transform = 'scale(0.96)'; card.style.opacity = '0';
-        setTimeout(() => router.navigate('login'), 350);
+        router.navigate('login');
       });
+
     }, 350);
   }
 }
