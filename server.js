@@ -192,10 +192,59 @@ const server = http.createServer(async (req, res) => {
     return jsonRes(res, 200, publicUsers);
   }
 
+  // ── POST /api/auth/register ──────────────
+  if (req.method === 'POST' && parsedUrl === '/api/auth/register') {
+    try {
+      const body = await parseBody(req);
+      const { name, nameSa, email, password, phone, specialization } = body;
+
+      if (!name || !email || !password) {
+        return jsonRes(res, 400, { success: false, message: 'Name, email and password are required.' });
+      }
+
+      // Check if email already exists
+      if (USERS.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+        return jsonRes(res, 409, { success: false, message: 'An account with this email already exists. Please contact admin.' });
+      }
+
+      // Create new user record
+      const newUser = {
+        id:             'usr_' + Date.now(),
+        name:           name.trim(),
+        nameSa:         (nameSa || '').trim(),
+        email:          email.trim().toLowerCase(),
+        password:       password,
+        role:           'Pending',
+        ganaId:         null,
+        phone:          (phone || '').trim(),
+        specialization: (specialization || '').trim(),
+        registeredAt:   new Date().toISOString()
+      };
+
+      // Append to users.json
+      const USERS_FILE = path.join(__dirname, 'data', 'users.json');
+      const allUsers = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+      allUsers.push(newUser);
+      fs.writeFileSync(USERS_FILE, JSON.stringify(allUsers, null, 2));
+
+      // Reload USERS in memory
+      USERS.push(newUser);
+
+      console.log(`[VVG] ★ New Acharya registered: ${newUser.name} <${newUser.email}> — PENDING ADMIN APPROVAL`);
+      return jsonRes(res, 200, {
+        success: true,
+        message: 'Registration submitted. Admin will review and activate your account.'
+      });
+    } catch(e) {
+      return jsonRes(res, 500, { success: false, message: 'Registration failed: ' + e.message });
+    }
+  }
+
   // ── GET /api/ping — health check ─────────
   if (req.method === 'GET' && parsedUrl === '/api/ping') {
     return jsonRes(res, 200, { status: 'ok', server: 'VVG Edu-Sys v3.0', time: new Date().toISOString() });
   }
+
 
   // ══════════════════════════════════════════
   //  STATIC FILE SERVING

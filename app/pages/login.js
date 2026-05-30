@@ -135,11 +135,78 @@ export function renderLogin(container, appInstance) {
             </button>
           </form>
 
-          <!-- Help note -->
+          <!-- Help note + Register link -->
           <div style="margin-top:1rem;padding:0.85rem 1rem;background:var(--gold-bg);border:1px solid var(--gold-leaf-pale);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--sandal-light);text-align:center;line-height:1.6;">
             <strong style="color:var(--charcoal-sandal);display:block;margin-bottom:3px;">आचार्याः — Acharyas</strong>
             Use your personal email and password provided by the administration.<br>
             Contact office if you have not received your credentials.
+          </div>
+
+          <!-- Register toggle -->
+          <div style="text-align:center;margin-top:1.1rem;">
+            <span style="font-size:0.78rem;color:var(--sandal-light);">New Acharya joining VVG? </span>
+            <button id="show-register-btn" style="background:none;border:none;color:var(--saffron-royal);font-size:0.78rem;font-weight:800;cursor:pointer;text-decoration:underline;">
+              Register Here
+            </button>
+          </div>
+
+          <!-- Registration form (hidden by default) -->
+          <div id="register-panel" style="display:none;margin-top:1.25rem;border-top:1px solid var(--sandal-div);padding-top:1.25rem;">
+
+            <div style="text-align:center;margin-bottom:1rem;">
+              <div style="font-size:0.65rem;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--saffron-royal);margin-bottom:4px;">नूतनाचार्य-नामाङ्कनम्</div>
+              <div style="font-size:1rem;font-weight:800;color:var(--charcoal-sandal);">Register as Acharya</div>
+              <div style="font-size:0.72rem;color:var(--sandal-light);margin-top:2px;">Submit your details — Admin will activate your account</div>
+            </div>
+
+            <form id="register-form" autocomplete="off" style="display:flex;flex-direction:column;gap:0.75rem;">
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-name">Full Name (English) <span style="color:var(--agni-red);">*</span></label>
+                <input type="text" id="reg-name" class="form-control" placeholder="e.g. Sanjaya Acharya" required>
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-name-sa">Name in Sanskrit / Devanagari</label>
+                <input type="text" id="reg-name-sa" class="form-control devanagari-body" placeholder="e.g. सञ्जयाचार्यः">
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-spec">Veda / Specialization</label>
+                <input type="text" id="reg-spec" class="form-control" placeholder="e.g. Rigveda — Shakala Shakha">
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-phone">Phone Number</label>
+                <input type="tel" id="reg-phone" class="form-control" placeholder="+91 XXXXX XXXXX">
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-email">Email Address <span style="color:var(--agni-red);">*</span></label>
+                <input type="email" id="reg-email" class="form-control" placeholder="your@email.com" required>
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-password">Choose Password <span style="color:var(--agni-red);">*</span></label>
+                <input type="password" id="reg-password" class="form-control" placeholder="Min 6 characters" required minlength="6">
+              </div>
+
+              <div id="reg-error" class="login-error-msg" style="display:none;"></div>
+              <div id="reg-success" style="display:none;background:#E8F5E9;border:1px solid #4CAF50;border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:0.8rem;color:#1B5E20;text-align:center;line-height:1.5;"></div>
+
+              <button type="submit" id="reg-btn" class="btn btn-saffron login-submit-btn" style="margin-top:0.25rem;">
+                <span id="reg-btn-text">
+                  <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                  Submit Registration
+                </span>
+                <span id="reg-btn-loading" style="display:none;">Submitting…</span>
+              </button>
+
+              <button type="button" id="hide-register-btn" style="background:none;border:none;color:var(--sandal-light);font-size:0.75rem;cursor:pointer;margin-top:-4px;">
+                ← Back to Login
+              </button>
+
+            </form>
           </div>
 
         </div>
@@ -239,6 +306,78 @@ export function renderLogin(container, appInstance) {
       container.querySelector('#login-password').focus();
     }
   }
+
+  // ── Register toggle ──────────────────────────────────
+  container.querySelector('#show-register-btn').addEventListener('click', () => {
+    container.querySelector('#register-panel').style.display = 'block';
+    container.querySelector('#show-register-btn').closest('div').style.display = 'none';
+    container.querySelector('#login-form').style.display = 'none';
+    container.querySelector('#server-status').style.display = 'none';
+    container.querySelector('.login-welcome').style.display = 'none';
+  });
+  container.querySelector('#hide-register-btn').addEventListener('click', () => {
+    container.querySelector('#register-panel').style.display = 'none';
+    container.querySelector('#show-register-btn').closest('div').style.display = 'block';
+    container.querySelector('#login-form').style.display = 'block';
+    container.querySelector('#server-status').style.display = 'flex';
+    container.querySelector('.login-welcome').style.display = 'block';
+  });
+
+  // ── Register form submit ─────────────────────────────
+  container.querySelector('#register-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn     = container.querySelector('#reg-btn');
+    const btnTxt  = container.querySelector('#reg-btn-text');
+    const btnLoad = container.querySelector('#reg-btn-loading');
+    const errEl   = container.querySelector('#reg-error');
+    const okEl    = container.querySelector('#reg-success');
+
+    const data = {
+      name:           container.querySelector('#reg-name').value.trim(),
+      nameSa:         container.querySelector('#reg-name-sa').value.trim(),
+      specialization: container.querySelector('#reg-spec').value.trim(),
+      phone:          container.querySelector('#reg-phone').value.trim(),
+      email:          container.querySelector('#reg-email').value.trim(),
+      password:       container.querySelector('#reg-password').value
+    };
+
+    errEl.style.display = 'none';
+    okEl.style.display  = 'none';
+    btn.disabled        = true;
+    btnTxt.style.display  = 'none';
+    btnLoad.style.display = 'inline';
+
+    try {
+      const res  = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        okEl.innerHTML = `
+          <strong>✅ Registration Submitted!</strong><br>
+          Welcome, ${data.name}.<br>
+          The Admin will review your request and activate your account shortly.
+          You will then be able to login with your email and password.
+        `;
+        okEl.style.display = 'block';
+        container.querySelector('#register-form').querySelectorAll('input').forEach(i => i.disabled = true);
+        btn.style.display = 'none';
+      } else {
+        errEl.textContent   = json.message || 'Registration failed. Please try again.';
+        errEl.style.display = 'block';
+      }
+    } catch(err) {
+      errEl.textContent   = 'Could not connect to server. Please try again.';
+      errEl.style.display = 'block';
+    }
+
+    btn.disabled          = false;
+    btnTxt.style.display  = 'inline';
+    btnLoad.style.display = 'none';
+  });
 
   function showError(msg) {
     const errEl = container.querySelector('#login-error');

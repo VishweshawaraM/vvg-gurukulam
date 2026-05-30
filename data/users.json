@@ -4,7 +4,7 @@
   { "id": "usr_sachin",   "name": "Acharya Sachin",         "nameSa": "आचार्यः सचिनः",        "email": "sachin@vvgurukulam.org",       "password": "vvg@sachin",        "role": "Acharya",      "ganaId": "gan_1" },
   { "id": "usr_sanjaya",  "name": "Sanjayacharya",          "nameSa": "सञ्जयाचार्यः",         "email": "sanjaya@vvgurukulam.org",      "password": "vvg@sanjaya",       "role": "Acharya",      "ganaId": "gan_1" },
   { "id": "usr_dhruvin",  "name": "Acharya Dhruvin",        "nameSa": "आचार्यः ध्रुविन्",     "email": "dhruvin@vvgurukulam.org",      "password": "vvg@dhruvin",       "role": "Acharya",      "ganaId": "gan_1" },
-  { "id": "usr_chimbaya", "name": "Acharya Chimbaya",       "nameSa": "आचार्यः चिम्बयः",      "email": "chimbaya@vvgurukulam.org",     "password": "vvg@chimbaya",      "role": "Acharya",      "ganaId": "gan_2" },
+  { "id": "usr_chinmay",  "name": "Chinmay Acharya",        "nameSa": "चिन्मयाचार्यः",         "email": "chinmay@vvgurukulam.org",      "password": "vvg@chinmay",        "role": "Acharya",      "ganaId": "gan_2" },
   { "id": "usr_atreyah",  "name": "Acharya Atreyah",        "nameSa": "आत्रेयः",               "email": "atreyah@vvgurukulam.org",      "password": "vvg@atreyah",       "role": "Acharya",      "ganaId": "gan_2" },
   { "id": "usr_vinayaka", "name": "Vinayakacharya",         "nameSa": "विनायकाचार्यः",        "email": "vinayaka@vvgurukulam.org",     "password": "vvg@vinayaka",      "role": "Acharya",      "ganaId": "gan_3" },
   { "id": "usr_gurupra",  "name": "Guruprasadacharya",      "nameSa": "गुरुप्रसादाचार्यः",   "email": "guruprasada@vvgurukulam.org",  "password": "vvg@guruprasada",   "role": "Acharya",      "ganaId": "gan_4" },
