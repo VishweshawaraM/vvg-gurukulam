@@ -696,7 +696,22 @@ export const db = {
   },
 
   // â”€â”€â”€ Attendance â”€â”€â”€
-  getClassLog(ganaId, dateStr, slotId) {\n    return this.data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;\n  },\n\n  saveClassLog(ganaId, dateStr, slotId, logData) {\n    if (!this.data.attendanceLog[ganaId]) this.data.attendanceLog[ganaId] = {};\n    if (!this.data.attendanceLog[ganaId][dateStr]) this.data.attendanceLog[ganaId][dateStr] = {};\n    this.data.attendanceLog[ganaId][dateStr][slotId] = logData;\n    this.save(this.data);\n  },\n\n  getAttendance(ganaId, dateStr) {
+  getClassLog(ganaId, dateStr, slotId) {\n    return this.data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;\n  },\n\n  saveClassLog(ganaId, dateStr, slotId, logData) {\n    if (!this.data.attendanceLog[ganaId]) this.data.attendanceLog[ganaId] = {};\n    if (!this.data.attendanceLog[ganaId][dateStr]) this.data.attendanceLog[ganaId][dateStr] = {};\n    this.data.attendanceLog[ganaId][dateStr][slotId] = logData;\n    this.save(this.data);\n  },\n\n
+  getClassLog(ganaId, dateStr, slotId) {
+    const data = this.get();
+    return data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;
+  },
+
+  saveClassLog(ganaId, dateStr, slotId, logData) {
+    const data = this.get();
+    if (!data.attendanceLog) data.attendanceLog = {};
+    if (!data.attendanceLog[ganaId]) data.attendanceLog[ganaId] = {};
+    if (!data.attendanceLog[ganaId][dateStr]) data.attendanceLog[ganaId][dateStr] = {};
+    data.attendanceLog[ganaId][dateStr][slotId] = logData;
+    this.save(data);
+  },
+
+  getAttendance(ganaId, dateStr) {
     const data = this.get();
     return (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
   },
