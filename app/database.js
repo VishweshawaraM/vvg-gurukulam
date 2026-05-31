@@ -43,13 +43,22 @@ export const db = {
   async syncFromServer() {
     try {
       const res = await fetch('/api/db');
-      if (res.status === 204) return false; // no server data yet
-      if (!res.ok) return false;
-      const serverData = await res.json();
+      let serverData = null;
+      if (res.status !== 204 && res.ok) {
+        serverData = await res.json();
+      }
+      
+      const usersRes = await fetch('/api/users');
+      if (usersRes.ok) {
+        const users = await usersRes.json();
+        if (!serverData) serverData = this.get();
+        serverData.users = users;
+      }
+      
       if (serverData && typeof serverData === 'object') {
         localStorage.setItem(DB_KEY, JSON.stringify(serverData));
         localStorage.setItem(DB_KEY + '_version', DB_VERSION);
-        console.log('[VVG] Database synced from server.');
+        console.log('[VVG] Database and Users synced from server.');
         return true;
       }
     } catch (e) {

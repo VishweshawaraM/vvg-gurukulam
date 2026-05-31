@@ -134,9 +134,7 @@ export function renderGanas(container, appInstance) {
               <thead>
                 <tr>
                   <th>नाम (Name)</th>
-                  <th>वेदशाखा (Veda Branch)</th>
-                  <th>कक्षावर्षम् (Year)</th>
-                  <th>कोशकुटी (Hostel Room)</th>
+                  <th>विशेषविषयः (Specialized Subject)</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,10 +142,8 @@ export function renderGanas(container, appInstance) {
                   ? `<tr><td colspan="4" style="text-align: center; color: var(--sandalwood-light);">No students enrolled in this Gana.</td></tr>`
                   : ganaStudents.map(s => `
                     <tr>
-                      <td><b>${s.name}</b><br><span class="devanagari" style="color: var(--saffron-primary); font-size: 0.8rem;">${s.sanskritName}</span></td>
-                      <td>${s.vedaBranch}</td>
-                      <td>${s.classYear}</td>
-                      <td>${s.hostelRoom.split(' - ')[1] || s.hostelRoom}</td>
+                      <td><b>${s.name}</b><br><span class="devanagari" style="color: var(--saffron-primary); font-size: 0.8rem;">${s.sanskritName || ''}</span></td>
+                      <td>${s.specialization || 'Not Assigned'}</td>
                     </tr>
                   `).join('')}
               </tbody>

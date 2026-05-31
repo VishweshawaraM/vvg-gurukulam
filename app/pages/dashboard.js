@@ -16,6 +16,7 @@ export function renderDashboard(container, appInstance) {
   const panchangam = getVaidikaPanchangam();
   const user = router.getUserSession();
   const isStaffOrAdmin = user && ['Admin', 'Office Staff'].includes(user.role);
+  const pendingUsers = (db.get().users || []).filter(u => u && u.role === 'Pending');
 
   // Stats
   const todayStr = new Date().toISOString().split('T')[0];
@@ -80,9 +81,8 @@ export function renderDashboard(container, appInstance) {
   const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
   const todaySchedules = [];
   ganas.slice(0, 4).forEach(gana => {
-    const tt = db.getTimetable(gana.id);
-    if (tt && tt[dayName]) {
-      const slots = tt[dayName];
+    const slots = db.getTimetable(gana.id);
+    if (slots) {
       const currentHour = today.getHours();
       // Find most relevant slot
       let slotKey = 'slot_2';
@@ -92,7 +92,7 @@ export function renderDashboard(container, appInstance) {
       else if (currentHour < 17) slotKey = 'slot_4';
       else slotKey = 'slot_5';
 
-      if (slots[slotKey]) {
+      if (slots[slotKey] && slots[slotKey].subject) {
         todaySchedules.push({ gana, slot: slots[slotKey], slotKey });
       }
     }
@@ -251,6 +251,39 @@ export function renderDashboard(container, appInstance) {
             </button>
           </div>
         </div>
+
+        <!-- Pending Approvals Widget -->
+        ${user && user.role === 'Admin' && pendingUsers.length > 0 ? `
+        <div class="gurukula-card" style="margin-top: 1.5rem; border: 1px solid var(--agni-red);">
+          <div class="card-header">
+            <h3 class="card-title" style="color: var(--agni-red);">
+              <svg viewBox="0 0 24 24" style="stroke:currentColor;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
+              <span>अनुमोदनम् (Pending Approvals) - ${pendingUsers.length}</span>
+            </h3>
+            <span class="card-sanskrit-tag">नूतनाचार्याः</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${pendingUsers.map(u => `
+              <div style="display: flex; flex-direction: column; gap: 8px; padding: 0.8rem; background: var(--gold-light); border-radius: var(--radius-sm); border: 1px solid var(--sandal-div);">
+                <div style="display: flex; justify-content: space-between;">
+                  <div>
+                    <span style="font-weight: 700; color: var(--saffron-royal); display: block;">${u.name}</span>
+                    <span style="font-size: 0.8rem; color: var(--charcoal-sandal);">${u.email}</span>
+                  </div>
+                  <div style="text-align: right; font-size: 0.75rem; color: var(--sandal-light);">
+                    ${u.specialization || 'N/A'}<br>
+                    ${u.phone || 'N/A'}
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                  <button class="btn btn-outline btn-sm btn-reject-user" data-id="${u.id}" style="border-color: rgba(184, 59, 59, 0.3); color: var(--agni-red); padding: 2px 10px;">Reject</button>
+                  <button class="btn btn-gold btn-sm btn-approve-user" data-id="${u.id}" style="padding: 2px 10px;">Approve</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
       </div>
 
       <!-- Right Column -->
@@ -412,6 +445,39 @@ export function renderDashboard(container, appInstance) {
   container.querySelectorAll('.ann-preview-item').forEach(item => {
     item.style.cursor = 'pointer';
     item.addEventListener('click', () => router.navigate('announcements'));
+  });
+  
+  // Pending user approvals
+  container.querySelectorAll('.btn-approve-user').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.closest('button').dataset.id;
+      const res = await fetch('/api/users/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        await db.syncFromServer();
+        renderDashboard(container, appInstance);
+      }
+    });
+  });
+
+  container.querySelectorAll('.btn-reject-user').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.closest('button').dataset.id;
+      if (confirm('Are you sure you want to reject this registration?')) {
+        const res = await fetch('/api/users/reject', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (res.ok) {
+          await db.syncFromServer();
+          renderDashboard(container, appInstance);
+        }
+      }
+    });
   });
 
   container.querySelectorAll('.gana-mini-card').forEach(card => {

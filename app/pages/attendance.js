@@ -192,10 +192,9 @@ export function renderAttendance(container, appInstance) {
     const selectedDateObj = new Date(selectedDateStr);
     const dayName = dayNames[selectedDateObj.getDay()];
 
-    const weeklyTimetable = db.getTimetable(selectedGanaId) || {};
-    const dayClasses = weeklyTimetable[dayName] || {};
+    const dailyTimetable = db.getTimetable(selectedGanaId) || {};
 
-    const activeSlots = Object.entries(dayClasses).filter(([k, v]) => v && v.subject);
+    const activeSlots = Object.entries(dailyTimetable).filter(([k, v]) => v && v.subject);
 
     let html = `
       <div class="gurukula-card framed">

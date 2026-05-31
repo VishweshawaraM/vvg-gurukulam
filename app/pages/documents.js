@@ -395,9 +395,9 @@ export function renderDocuments(container, appInstance) {
         drawer.querySelector('#cert-title-sa').textContent = 'विद्याभ्यासप्रमाणपत्रम्';
         drawer.querySelector('#cert-title-en').textContent = 'CERTIFICATE OF VEDIC STUDY';
         drawer.querySelector('#cert-body-sa').innerHTML =
-          `एतद् द्वारा प्रमाणीक्रियते यत् छात्रः <b>${student.sanskritName}</b>, पितुः नाम <b>${student.parentName}</b>, अस्मदीये वेदविज्ञानगुरुकुले <b>${student.vedaBranch.split(' (')[0]}</b> शाखायाः अध्ययनं यथाविधि समाप्य उत्तमयोग्यतां प्राप्तवान् इति।`;
+          `एतद् द्वारा प्रमाणीक्रियते यत् छात्रः <b>${student.sanskritName}</b>, पितुः नाम <b>${student.parentName}</b>, अस्मदीये वेदविज्ञानगुरुकुले <b>${student.specialization || 'सामान्य'}</b> शाखायाः अध्ययनं यथाविधि समाप्य उत्तमयोग्यतां प्राप्तवान् इति।`;
         drawer.querySelector('#cert-body-en').innerHTML =
-          `This is to certify that the scholar <b>${student.name}</b>, son of <b>${student.parentName}</b>, has successfully completed the formal course of Vedic study in <b>${student.vedaBranch}</b> at Veda Vijnana Gurukulam, Channenahalli, Magadi Road, Bengaluru — Karnataka.`;
+          `This is to certify that the scholar <b>${student.name}</b>, son of <b>${student.parentName}</b>, has successfully completed the formal course of Vedic study in <b>${student.specialization || 'General'}</b> at Veda Vijnana Gurukulam, Channenahalli, Magadi Road, Bengaluru — Karnataka.`;
       } else {
         drawer.querySelector('#cert-title-sa').textContent = 'शीलप्रमाणपत्रम्';
         drawer.querySelector('#cert-title-en').textContent = 'CHARACTER CERTIFICATE';

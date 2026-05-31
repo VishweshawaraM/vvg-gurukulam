@@ -7,7 +7,14 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["gurukula", "veda", "education"],
+  "keywords": [
+    "gurukula",
+    "veda",
+    "education"
+  ],
   "author": "Veda Vijnana Gurukulam",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "nodemailer": "^8.0.10"
+  }
 }

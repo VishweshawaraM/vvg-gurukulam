@@ -13,6 +13,17 @@ const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+// ── Email Transporter Setup ────────
+// NOTE: For real deployment, replace with real Gmail credentials
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER || 'vvgurukulam.system@gmail.com',
+    pass: process.env.EMAIL_PASS || 'dummy-app-password-123'
+  }
+});
 
 const PORT     = process.env.PORT || 3000;
 const FIREBASE = 'https://vvg-edu-sys-default-rtdb.firebaseio.com';
@@ -271,12 +282,69 @@ const server = http.createServer(async (req, res) => {
 
 
       console.log(`[VVG] ★ New Acharya registered: ${newUser.name} <${newUser.email}> — PENDING ADMIN APPROVAL`);
+      
+      // Send Registration Received Email (Fire and forget, ignoring errors for now)
+      transporter.sendMail({
+        from: '"VVG Admin System" <vvgurukulam.system@gmail.com>',
+        to: newUser.email,
+        subject: 'Registration Received - Veda Vijnana Gurukulam',
+        text: `Namaskaram ${newUser.name},\n\nYour registration for the Veda Vijnana Gurukulam system has been received. Your chosen specialization is ${newUser.specialization || 'Not Specified'}.\n\nAn Admin will review and approve your account shortly.\n\nPranam,\nVVG System`
+      }).catch(err => console.log('Mail error (expected if no real credentials):', err.message));
+
       return jsonRes(res, 200, {
         success: true,
         message: 'Registration submitted. Admin will review and activate your account.'
       });
     } catch(e) {
       return jsonRes(res, 500, { success: false, message: 'Registration failed: ' + e.message });
+    }
+  }
+
+  // ── POST /api/users/approve ──────────────
+  if (req.method === 'POST' && parsedUrl.match(/^\/api\/users\/approve\/?$/)) {
+    try {
+      const body = await parseBody(req);
+      const { id } = body;
+      const userIndex = USERS.findIndex(u => u && u.id === id);
+      if (userIndex === -1) return jsonRes(res, 404, { success: false, message: 'User not found' });
+      
+      USERS[userIndex].role = 'Acharya';
+      
+      await fetch(`${FIREBASE}/users.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(USERS)
+      });
+
+      // Send Approval Email
+      transporter.sendMail({
+        from: '"VVG Admin System" <vvgurukulam.system@gmail.com>',
+        to: USERS[userIndex].email,
+        subject: 'Account Approved - Veda Vijnana Gurukulam',
+        text: `Namaskaram ${USERS[userIndex].name},\n\nYour Acharya account has been officially approved! You can now log in to the management system.\n\nPranam,\nVVG Admin`
+      }).catch(err => console.log('Mail error:', err.message));
+
+      return jsonRes(res, 200, { success: true, message: 'User approved' });
+    } catch(e) {
+      return jsonRes(res, 500, { success: false, error: e.message });
+    }
+  }
+
+  // ── POST /api/users/reject ──────────────
+  if (req.method === 'POST' && parsedUrl.match(/^\/api\/users\/reject\/?$/)) {
+    try {
+      const body = await parseBody(req);
+      const { id } = body;
+      USERS = USERS.filter(u => u && u.id !== id);
+      
+      await fetch(`${FIREBASE}/users.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(USERS)
+      });
+      return jsonRes(res, 200, { success: true, message: 'User rejected and removed' });
+    } catch(e) {
+      return jsonRes(res, 500, { success: false, error: e.message });
     }
   }
 

@@ -161,6 +161,11 @@ export function renderLogin(container, appInstance) {
 
             <form id="register-form" autocomplete="off" style="display:flex;flex-direction:column;gap:0.75rem;">
 
+              <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; margin-top: 0.5rem;">
+                <div style="width: 70px; height: 70px; border-radius: 50%; border: 2px dashed var(--gold-solid); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sandal-light); font-size: 0.75rem; text-align: center;">
+                  Upload<br>Photo
+                </div>
+              </div>
               <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label" for="reg-name">Full Name (English) <span style="color:var(--agni-red);">*</span></label>
                 <input type="text" id="reg-name" class="form-control" placeholder="e.g. Sanjaya Acharya" required>
@@ -172,8 +177,15 @@ export function renderLogin(container, appInstance) {
               </div>
 
               <div class="form-group" style="margin-bottom:0;">
-                <label class="form-label" for="reg-spec">Veda / Specialization</label>
-                <input type="text" id="reg-spec" class="form-control" placeholder="e.g. Rigveda — Shakala Shakha">
+                <label class="form-label" for="reg-spec">Specialization</label>
+                <select id="reg-spec" class="form-control" required>
+                  <option value="" disabled selected>Select Specialization</option>
+                  <option value="Shukla Yajurveda">Shukla Yajurveda</option>
+                  <option value="Krishna Yajurveda">Krishna Yajurveda</option>
+                  <option value="Vedanta">Vedanta</option>
+                  <option value="Vyakarana">Vyakarana</option>
+                  <option value="Mimamsa">Mimamsa</option>
+                </select>
               </div>
 
               <div class="form-group" style="margin-bottom:0;">

@@ -159,7 +159,7 @@ export function renderTimetable(container, appInstance) {
                   <th class="tt-gana-head" style="border-top:3px solid ${g.color};">
                     <span class="tt-gana-name">${g.name}</span>
                     <span class="tt-gana-sub">${g.englishName}</span>
-                    <span class="tt-gana-branch">${g.vedaBranch.split('–')[1]?.trim() || g.vedaBranch}</span>
+                    <span class="tt-gana-branch">${g.specialization || ''}</span>
                   </th>
                 `).join('')}
               </tr>

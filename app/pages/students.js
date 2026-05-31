@@ -359,9 +359,25 @@ export function renderStudents(container, appInstance) {
       </div>
       <div class="drawer-body">
         <form id="add-student-form">
+          <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; border: 2px dashed var(--gold-solid); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--sandal-light); font-size: 0.8rem; text-align: center; background: var(--bg-body);">
+              Upload<br>Photo
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label"><span>छात्रनाम (Student Name) *</span></label>
             <input type="text" id="add-name" class="form-control" placeholder="e.g. Mahadeva Bhatta" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>विशेषविषयः (Specialized Subject) *</span></label>
+            <select id="add-specialization" class="form-control" required>
+              <option value="" disabled selected>Select Subject</option>
+              <option value="Shukla Yajurveda">Shukla Yajurveda</option>
+              <option value="Krishna Yajurveda">Krishna Yajurveda</option>
+              <option value="Vedanta">Vedanta</option>
+              <option value="Vyakarana">Vyakarana</option>
+              <option value="Mimamsa">Mimamsa</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label"><span>गणनियोजनम् (Gana Assignment) *</span></label>
@@ -381,9 +397,9 @@ export function renderStudents(container, appInstance) {
       const newStudent = {
         name: drawer.querySelector('#add-name').value,
         ganaId: drawer.querySelector('#add-gana').value,
+        specialization: drawer.querySelector('#add-specialization').value,
         sanskritName: '', dob: '', joiningDate: new Date().toISOString().split('T')[0],
-        vedaBranch: 'Rigveda', classYear: 'Year 1', parentName: '',
-        parentContact: '', address: '', notes: ''
+        parentName: '', parentContact: '', address: '', notes: ''
       };
       db.addStudent(newStudent);
       closeDrawer();
@@ -438,20 +454,16 @@ export function renderStudents(container, appInstance) {
             </div>
             
             <div class="form-group">
-              <label class="form-label"><span>वेदशाखा (Veda Branch) *</span></label>
-              <select id="edit-veda-branch" class="form-control" required>
-                <option ${student.vedaBranch.startsWith('Rigveda') ? 'selected' : ''}>Rigveda (Shakala Shakha)</option>
-                <option ${student.vedaBranch.startsWith('Krishna') ? 'selected' : ''}>Krishna Yajurveda (Taittiriya Shakha)</option>
-                <option ${student.vedaBranch.startsWith('Samaveda') ? 'selected' : ''}>Samaveda (Kauthuma Shakha)</option>
-                <option ${student.vedaBranch.startsWith('Atharvaveda') ? 'selected' : ''}>Atharvaveda (Shaunaka Shakha)</option>
+              <label class="form-label"><span>विशेषविषयः (Specialized Subject) *</span></label>
+              <select id="edit-specialization" class="form-control" required>
+                <option value="Shukla Yajurveda" ${student.specialization === 'Shukla Yajurveda' ? 'selected' : ''}>Shukla Yajurveda</option>
+                <option value="Krishna Yajurveda" ${student.specialization === 'Krishna Yajurveda' ? 'selected' : ''}>Krishna Yajurveda</option>
+                <option value="Vedanta" ${student.specialization === 'Vedanta' ? 'selected' : ''}>Vedanta</option>
+                <option value="Vyakarana" ${student.specialization === 'Vyakarana' ? 'selected' : ''}>Vyakarana</option>
+                <option value="Mimamsa" ${student.specialization === 'Mimamsa' ? 'selected' : ''}>Mimamsa</option>
               </select>
             </div>
           </div>
-
-          <div class="form-group">
-              <label class="form-label"><span>कक्षावर्षम् (Academic Year) *</span></label>
-              <input type="text" id="edit-class" class="form-control" value="${student.classYear}" required>
-            </div>
 
           <div class="form-group">
             <label class="form-label"><span>अभिभावकनाम (Parent Name) *</span></label>
@@ -492,8 +504,7 @@ export function renderStudents(container, appInstance) {
         dob: drawer.querySelector('#edit-dob').value,
         joiningDate: drawer.querySelector('#edit-joining-date').value,
         ganaId: drawer.querySelector('#edit-gana').value,
-        vedaBranch: drawer.querySelector('#edit-veda-branch').value,
-        classYear: drawer.querySelector('#edit-class').value,
+        specialization: drawer.querySelector('#edit-specialization').value,
         parentName: drawer.querySelector('#edit-parent-name').value,
         parentContact: drawer.querySelector('#edit-parent-contact').value,
         address: drawer.querySelector('#edit-address').value,

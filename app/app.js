@@ -72,18 +72,36 @@ export function getVaidikaPanchangam() {
     { sa: 'रेवती', en: 'Revati' }
   ];
 
-  const masaIndex = Math.floor((dayOfYear % 360) / 30);
-  const tithiIndex = dayOfYear % 15;
-  const paksha = (dayOfYear % 30) < 15
+  // Approximate lunar calculations based on a known epoch (e.g., Jan 11, 2024 New Moon)
+  const epoch = new Date('2024-01-11T11:57:00Z').getTime();
+  const lunarCycle = 29.53058867 * 24 * 60 * 60 * 1000;
+  const diff = today.getTime() - epoch;
+  const cycleFraction = (diff % lunarCycle) / lunarCycle;
+  
+  let tithiNumber = Math.floor(cycleFraction * 30) + 1;
+  const isShukla = tithiNumber <= 15;
+  if (tithiNumber > 15) tithiNumber -= 15;
+  const tithiIndex = tithiNumber === 15 ? 14 : tithiNumber - 1; // 14 is Purnima or Amavasya in the list
+
+  // Sidereal month (27.32 days) for Nakshatra approximation
+  const siderealEpoch = new Date('2024-01-01T00:00:00Z').getTime();
+  const siderealCycle = 27.321661 * 24 * 60 * 60 * 1000;
+  const nakshatraIndex = Math.floor((((today.getTime() - siderealEpoch) % siderealCycle) / siderealCycle) * 27) % 27;
+
+  // Solar year for Masa approximation
+  const solarYearStart = new Date(today.getFullYear(), 3, 14).getTime();
+  const daysSinceSolarStart = (today.getTime() - solarYearStart) / (24*60*60*1000);
+  const masaIndex = Math.floor((daysSinceSolarStart >= 0 ? daysSinceSolarStart : daysSinceSolarStart + 365.25) / 29.53058) % 12;
+
+  const paksha = isShukla
     ? { sa: 'शुक्लपक्षः', en: 'Shukla Paksha' }
     : { sa: 'कृष्णपक्षः', en: 'Krishna Paksha' };
-  const nakshatraIndex = dayOfYear % 27;
   const varaNames = ['रविवासरः', 'सोमवासरः', 'मङ्गलवासरः', 'बुधवासरः', 'गुरुवासरः', 'शुक्रवासरः', 'शनिवासरः'];
   const vara = varaNames[new Date().getDay()];
 
   return {
     masa: masasList[masaIndex],
-    tithi: tithisList[tithiIndex === 0 ? 14 : tithiIndex - 1],
+    tithi: tithisList[tithiIndex],
     paksha,
     nakshatra: nakshatrasList[nakshatraIndex],
     vara,
