@@ -145,7 +145,7 @@ const server = http.createServer(async (req, res) => {
     } catch(e) {}
 
     const user = USERS.find(u =>
-      u.email.toLowerCase() === (email || '').toLowerCase() &&
+      u && u.email.toLowerCase() === (email || '').toLowerCase() &&
       u.password === password
     );
 
@@ -224,7 +224,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/users — list acharyas ───────
   if (req.method === 'GET' && parsedUrl === '/api/users') {
-    const publicUsers = USERS.map(u => ({
+    const publicUsers = USERS.filter(u => u).map(u => ({
       id: u.id, name: u.name, nameSa: u.nameSa,
       email: u.email, role: u.role, ganaId: u.ganaId
     }));
@@ -242,7 +242,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Check if email already exists
-      if (USERS.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+      if (USERS.find(u => u && u.email.toLowerCase() === email.toLowerCase())) {
         return jsonRes(res, 409, { success: false, message: 'An account with this email already exists. Please contact admin.' });
       }
 
