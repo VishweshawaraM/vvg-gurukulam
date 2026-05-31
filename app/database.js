@@ -5,7 +5,7 @@
 */
 
 const DB_KEY     = 'vvg_database';
-const DB_VERSION = '3.3.0'; // Removed vedaBranch, added specialization
+const DB_VERSION = '3.4.0'; // Slot-based attendance and Veda/Shastra split
 
 export const db = {
   get() {

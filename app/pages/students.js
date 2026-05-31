@@ -20,7 +20,7 @@ export function renderStudents(container, appInstance) {
     const filteredStudents = students.filter(s => {
       const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.sanskritName.includes(searchTerm) || 
-                          s.vedaBranch.toLowerCase().includes(searchTerm.toLowerCase());
+                          (s.veda && s.veda.toLowerCase().includes(searchTerm.toLowerCase())) || (s.shastra && s.shastra.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchGana = selectedGana === 'all' || s.ganaId === selectedGana;
       return matchSearch && matchGana;
     });
@@ -45,7 +45,7 @@ export function renderStudents(container, appInstance) {
                 </div>
               </td>
               <td><span class="badge badge-saffron">${ganaName}</span></td>
-              <td>${s.vedaBranch.split(' (')[0]}</td>
+              <td>${s.veda || ''}${s.shastra && s.shastra !== 'None' ? ' / ' + s.shastra : ''}</td>
               <td>${s.classYear}</td>
               ${!isReadOnly ? `
                 <td>

@@ -180,20 +180,12 @@ export function renderAttendance(container, appInstance) {
   }
 
   function renderMarkTab(target, ganaStudents, selectedGana) {
-    const slots = [
-      { id: 'slot_1', label: '06:00 - 07:30', name: 'प्रातः सन्ध्यावन्दनम्' },
-      { id: 'slot_2', label: '09:30 - 11:00', name: 'वेदसंहितापाठः' },
-      { id: 'slot_3', label: '11:30 - 01:00', name: 'वेदभाष्यम् / व्याकरणम्' },
-      { id: 'slot_4', label: '03:00 - 04:30', name: 'स्वाध्यायः' },
-      { id: 'slot_5', label: '06:00 - 07:30', name: 'सायं सन्ध्यावन्दनम्' }
-    ];
-
+    const slots = db.getAllTimeSlots();
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const selectedDateObj = new Date(selectedDateStr);
     const dayName = dayNames[selectedDateObj.getDay()];
 
     const dailyTimetable = db.getTimetable(selectedGanaId) || {};
-
     const activeSlots = Object.entries(dailyTimetable).filter(([k, v]) => v && v.subject);
 
     let html = `
@@ -223,35 +215,59 @@ export function renderAttendance(container, appInstance) {
       html += `<div style="display: flex; flex-direction: column; gap: 1.5rem;">`;
       
       activeSlots.forEach(([slotId, details]) => {
-        const slotInfo = slots.find(s => s.id === slotId);
-        const logData = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || { present: ganaStudents.length, absent: 0, notes: '' };
+        const slotInfo = slots[slotId];
+        const classLog = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || { notes: '' };
+        const attendanceLog = db.getAttendance(selectedGanaId, selectedDateStr) || {};
         
+        // Detect Veda/Shastra specialization
+        let eligibleStudents = ganaStudents;
+        const sub = (details.engSubject || '').toLowerCase() + ' ' + (details.subject || '').toLowerCase();
+        let detectedType = 'All Students';
+        
+        if (sub.includes('vyakarana') || sub.includes('kaumudi') || sub.includes('mahabhashya') || sub.includes('manorama')) {
+            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Vyakarana' || s.shastra === 'None');
+            detectedType = 'Vyakarana Students';
+        } else if (sub.includes('vedanta') || sub.includes('sutram') || sub.includes('advaita') || sub.includes('bhashyam')) {
+            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Vedanta' || s.shastra === 'None');
+            detectedType = 'Vedanta Students';
+        } else if (sub.includes('mimamsa') || sub.includes('nyaya') || sub.includes('tarka')) {
+            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Mimamsa' || s.shastra === 'Nyaya' || s.shastra === 'None');
+            detectedType = 'Mimamsa/Nyaya Students';
+        }
+
         html += `
           <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--gold-border); padding-bottom: 0.8rem; margin-bottom: 1rem;">
               <div>
                 <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--saffron-royal); margin-bottom: 0.2rem;">${details.subject}</h4>
-                <span style="font-size: 0.8rem; color: var(--sandalwood);">${slotInfo?.label || ''} — ${details.engSubject}</span>
+                <span style="font-size: 0.8rem; color: var(--sandalwood);">${slotInfo?.time || slotInfo?.label || ''} — ${details.engSubject}</span>
+                <span style="margin-left:10px; font-size: 0.7rem; background: var(--saffron-royal); color: white; padding: 2px 6px; border-radius: 4px;">${detectedType}</span>
               </div>
             </div>
             
             <form class="class-log-form" data-slot-id="${slotId}">
-              <div class="form-row" style="margin-bottom: 1rem;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 0.8rem;">Students Present</label>
-                  <input type="number" name="present" class="form-control" value="${logData.present}" min="0" required>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 0.8rem;">Students Absent</label>
-                  <input type="number" name="absent" class="form-control" value="${logData.absent}" min="0" required>
-                </div>
+              <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 1rem;">
+                ${eligibleStudents.map(s => {
+                  // For backward compatibility, check if the student was marked absent globally or for this slot.
+                  const isPresent = !attendanceLog[slotId] || attendanceLog[slotId][s.id] !== 'Absent';
+                  return `
+                  <label style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px; border: 1px solid var(--gold-border); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 18px; height: 18px;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--charcoal-sandal);">${s.name}</span>
+                  </label>
+                  `;
+                }).join('')}
               </div>
+
               <div class="form-group">
                 <label class="form-label" style="font-size: 0.8rem;">Class Notes (What was taught?)</label>
-                <textarea name="notes" class="form-control" rows="3" placeholder="e.g. I taught Rigveda Mandala 1, Sukta 1. Everyone chanted well.">${logData.notes}</textarea>
+                <textarea name="notes" class="form-control" rows="2" placeholder="e.g. I taught Rigveda Mandala 1, Sukta 1...">${classLog.notes}</textarea>
               </div>
-              <button type="submit" class="btn btn-saffron" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Save Class Log</button>
-              <span class="save-indicator" style="margin-left: 10px; font-size: 0.8rem; color: var(--forest-tulsi); display: none;">Saved!</span>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="submit" class="btn btn-saffron" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Save Slot Attendance</button>
+                <button type="button" class="btn btn-ghost btn-sm mark-all-btn">Toggle All</button>
+                <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); display: none;">Saved!</span>
+              </div>
             </form>
           </div>
         `;
@@ -262,14 +278,28 @@ export function renderAttendance(container, appInstance) {
       
       // Bind form submits
       target.querySelectorAll('.class-log-form').forEach(form => {
+        // Toggle All button
+        form.querySelector('.mark-all-btn').addEventListener('click', () => {
+          const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+          const allChecked = Array.from(checkboxes).every(c => c.checked);
+          checkboxes.forEach(c => c.checked = !allChecked);
+        });
+
         form.addEventListener('submit', (e) => {
           e.preventDefault();
           const slotId = form.getAttribute('data-slot-id');
-          const present = parseInt(form.querySelector('[name="present"]').value) || 0;
-          const absent = parseInt(form.querySelector('[name="absent"]').value) || 0;
           const notes = form.querySelector('[name="notes"]').value;
           
+          const studentStatuses = {};
+          form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            studentStatuses[cb.value] = cb.checked ? 'Present' : 'Absent';
+          });
+          
+          const present = Object.values(studentStatuses).filter(v => v === 'Present').length;
+          const absent = Object.values(studentStatuses).filter(v => v === 'Absent').length;
+
           db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { present, absent, notes });
+          db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses); // Note: updated to use slotId
           
           const ind = form.querySelector('.save-indicator');
           ind.style.display = 'inline-block';
@@ -285,7 +315,7 @@ export function renderAttendance(container, appInstance) {
     });
   }
 
-  // Remove the old grid functions by just returning early or ignoring them
+
   function renderRegisterTab(target, ganaStudents, selectedGana) {
     const daysCount = 15;
     const today = new Date();
@@ -328,12 +358,24 @@ export function renderAttendance(container, appInstance) {
               ${ganaStudents.map(s => {
                 let presentTotal = 0, totalTracked = 0;
                 const cells = dateColumns.map(date => {
-                  const log = db.getAttendance(selectedGanaId, date);
                   const d = new Date(date);
                   const isSun = d.getDay() === 0;
-                  if (log && log[s.id]) {
+                  
+                  // A student is considered present if they were marked present in AT LEAST ONE slot that day.
+                  let wasPresent = false;
+                  let hasData = false;
+                  const allSlots = db.getAllTimeSlots();
+                  Object.keys(allSlots).forEach(slotId => {
+                      const log = db.getAttendance(date, slotId);
+                      if (log && log[s.id]) {
+                          hasData = true;
+                          if (log[s.id] === 'Present') wasPresent = true;
+                      }
+                  });
+
+                  if (hasData) {
                     totalTracked++;
-                    if (log[s.id] === 'Present') { presentTotal++; return `<td style="${isSun ? 'background:var(--saffron-royal-light)' : ''}"><span style="color:var(--forest-tulsi);font-weight:800;font-size:1rem;">✔</span></td>`; }
+                    if (wasPresent) { presentTotal++; return `<td style="${isSun ? 'background:var(--saffron-royal-light)' : ''}"><span style="color:var(--forest-tulsi);font-weight:800;font-size:1rem;">✔</span></td>`; }
                     return `<td style="${isSun ? 'background:var(--saffron-royal-light)' : ''}"><span style="color:var(--agni-red);font-weight:800;font-size:1rem;">✘</span></td>`;
                   }
                   return `<td style="${isSun ? 'background:var(--saffron-royal-light)' : ''}"><span style="color:var(--sandal-div);font-size:0.9rem;">•</span></td>`;
@@ -360,6 +402,7 @@ export function renderAttendance(container, appInstance) {
 
     target.querySelector('#btn-print-register').addEventListener('click', () => window.print());
   }
+
 
   function renderAnalyticsTab(target, ganaStudents, selectedGana) {
     const weekStats = db.getAttendanceStats(selectedGanaId, 7);

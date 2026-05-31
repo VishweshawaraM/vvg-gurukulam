@@ -143,7 +143,7 @@ export function renderGanas(container, appInstance) {
                   : ganaStudents.map(s => `
                     <tr>
                       <td><b>${s.name}</b><br><span class="devanagari" style="color: var(--saffron-primary); font-size: 0.8rem;">${s.sanskritName || ''}</span></td>
-                      <td>${s.specialization || 'Not Assigned'}</td>
+                      <td>${s.veda || ''}${s.shastra && s.shastra !== 'None' ? ' / ' + s.shastra : ''}</td>
                     </tr>
                   `).join('')}
               </tbody>

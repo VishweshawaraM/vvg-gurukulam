@@ -24,13 +24,11 @@ export function renderDashboard(container, appInstance) {
   let isAttendanceMarkedToday = false;
 
   ganas.forEach(gana => {
-    const log = db.getAttendance(gana.id, todayStr);
-    if (log) {
+    const stats = db.getAttendanceStats(gana.id, 1);
+    if (stats && stats.length > 0 && stats[0].total > 0) {
       isAttendanceMarkedToday = true;
-      Object.values(log).forEach(status => {
-        totalStudentsForAttendance++;
-        if (status === 'Present') totalPresent++;
-      });
+      totalPresent += stats[0].present;
+      totalStudentsForAttendance += stats[0].total;
     }
   });
 
@@ -58,9 +56,12 @@ export function renderDashboard(container, appInstance) {
     const dateStr = d.toISOString().split('T')[0];
     let present = 0, total = 0;
     ganas.forEach(gana => {
-      const log = db.getAttendance(gana.id, dateStr);
-      if (log) {
-        Object.values(log).forEach(s => { total++; if (s === 'Present') present++; });
+      // use the new getAttendanceStats that supports slot-based records
+      const stats = db.getAttendanceStats(gana.id, 7);
+      const dayStat = stats.find(s => s.date === dateStr);
+      if (dayStat && dayStat.total > 0) {
+        present += dayStat.present;
+        total += dayStat.total;
       }
     });
     const dayLabel = d.toLocaleDateString('en-IN', { weekday: 'short' }).substring(0, 2);
@@ -70,9 +71,8 @@ export function renderDashboard(container, appInstance) {
   // Gana mini stats
   const ganaMiniStats = ganas.map(gana => {
     const ganaStudents = students.filter(s => s.ganaId === gana.id);
-    const log = db.getAttendance(gana.id, todayStr);
-    let presentCount = log ? Object.values(log).filter(s => s === 'Present').length : 0;
-    const attPct = ganaStudents.length > 0 ? Math.round((presentCount / ganaStudents.length) * 100) : 0;
+    const stats = db.getAttendanceStats(gana.id, 1);
+    const attPct = (stats && stats.length > 0 && stats[0].total > 0) ? stats[0].pct : 0;
     return { gana, studentCount: ganaStudents.length, attPct };
   });
 
