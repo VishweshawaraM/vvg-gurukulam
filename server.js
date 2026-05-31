@@ -109,6 +109,11 @@ const server = http.createServer(async (req, res) => {
     const body = await parseBody(req);
     const { email, password } = body;
 
+    try {
+      const fbUsers = await fetch(`${FIREBASE}/users.json`).then(r => r.json());
+      if (fbUsers && Array.isArray(fbUsers)) USERS = fbUsers;
+    } catch(e) {}
+
     const user = USERS.find(u =>
       u.email.toLowerCase() === (email || '').toLowerCase() &&
       u.password === password
