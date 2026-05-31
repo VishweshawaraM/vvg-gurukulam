@@ -17,7 +17,12 @@ export const db = {
       localStorage.setItem(DB_KEY + '_version', DB_VERSION);
       return seeded;
     }
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    return {
+      students: [], acharyas: [], ganas: [], timetable: [], timeSlots: [], 
+      attendanceLog: [], documents: [], announcements: [], activities: [], 
+      sheetsConfig: null, ...parsed
+    };
   },
 
   save(data) {
@@ -41,7 +46,7 @@ export const db = {
       if (res.status === 204) return false; // no server data yet
       if (!res.ok) return false;
       const serverData = await res.json();
-      if (serverData && serverData.students && serverData.students.length > 0) {
+      if (serverData && typeof serverData === 'object') {
         localStorage.setItem(DB_KEY, JSON.stringify(serverData));
         localStorage.setItem(DB_KEY + '_version', DB_VERSION);
         console.log('[VVG] Database synced from server.');
