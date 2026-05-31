@@ -180,125 +180,113 @@ export function renderAttendance(container, appInstance) {
   }
 
   function renderMarkTab(target, ganaStudents, selectedGana) {
-    const existingRecords = db.getAttendance(selectedGanaId, selectedDateStr);
-    tempRecords = {};
-    ganaStudents.forEach(s => {
-      tempRecords[s.id] = existingRecords?.[s.id] || 'Present';
-    });
+    const slots = [
+      { id: 'slot_1', label: '06:00 - 07:30', name: 'प्रातः सन्ध्यावन्दनम्' },
+      { id: 'slot_2', label: '09:30 - 11:00', name: 'वेदसंहितापाठः' },
+      { id: 'slot_3', label: '11:30 - 01:00', name: 'वेदभाष्यम् / व्याकरणम्' },
+      { id: 'slot_4', label: '03:00 - 04:30', name: 'स्वाध्यायः' },
+      { id: 'slot_5', label: '06:00 - 07:30', name: 'सायं सन्ध्यावन्दनम्' }
+    ];
 
-    const presentCount = Object.values(tempRecords).filter(s => s === 'Present').length;
-    const absentCount = ganaStudents.length - presentCount;
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const selectedDateObj = new Date(selectedDateStr);
+    const dayName = dayNames[selectedDateObj.getDay()];
 
-    target.innerHTML = `
+    const weeklyTimetable = db.getTimetable(selectedGanaId) || {};
+    const dayClasses = weeklyTimetable[dayName] || {};
+
+    const activeSlots = Object.entries(dayClasses).filter(([k, v]) => v && v.subject);
+
+    let html = `
       <div class="gurukula-card framed">
         <div class="card-header">
           <h3 class="card-title">
-            <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span>${selectedGana?.name || ''} — उपस्थिति-अङ्कनम्</span>
+            <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>${selectedGana?.name || ''} — Class Log & Attendance (${dayName})</span>
           </h3>
           <span class="card-sanskrit-tag" style="color:${selectedGana?.color || 'var(--saffron-royal)'};">${selectedGana?.englishName || ''}</span>
         </div>
 
-        <!-- Controls Row -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--sandal-div);">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <div>
-              <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sandal-light); display: block; margin-bottom: 3px;">Date</label>
-              <input type="date" id="attend-date-input" class="form-control" style="width: 160px; padding: 0.5rem 0.85rem;" value="${selectedDateStr}">
-            </div>
-            <div style="display: flex; gap: 8px; align-items: flex-end;">
-              <button class="btn btn-ghost btn-sm" id="btn-mark-all-present">Mark All Present</button>
-              <button class="btn btn-ghost btn-sm" id="btn-mark-all-absent">Mark All Absent</button>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--forest-tulsi);" id="present-summary">Present: ${presentCount}</span>
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--agni-red);" id="absent-summary">Absent: ${absentCount}</span>
-            <button class="btn btn-saffron" id="btn-save-attendance">
-              <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-              संरक्षणम् (Save)
-            </button>
-          </div>
+        <div style="margin-bottom: 1.5rem;">
+          <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); display: block; margin-bottom: 3px;">Select Date</label>
+          <input type="date" id="attend-date-input" class="form-control" style="width: 200px; padding: 0.5rem 0.85rem;" value="${selectedDateStr}">
         </div>
+    `;
 
-        <!-- Student Grid -->
-        <div class="attendance-student-grid" id="attendance-student-grid">
-          ${ganaStudents.map(s => {
-            const status = tempRecords[s.id];
-            const initial = s.name.charAt(0);
-            return `
-              <div class="attendance-student-card ${status === 'Present' ? 'present' : 'absent'}" data-student-id="${s.id}" title="Click to toggle">
-                <div class="att-student-avatar">${initial}</div>
-                <div class="att-student-info">
-                  <span class="att-student-name">${s.name}</span>
-                  <span class="att-student-sa">${s.sanskritName}</span>
+    if (activeSlots.length === 0) {
+      html += `
+        <div style="text-align: center; padding: 3rem; color: var(--sandal-light);">
+          <p>No classes scheduled for ${dayName} in the timetable.</p>
+        </div>
+      </div>`;
+      target.innerHTML = html;
+    } else {
+      html += `<div style="display: flex; flex-direction: column; gap: 1.5rem;">`;
+      
+      activeSlots.forEach(([slotId, details]) => {
+        const slotInfo = slots.find(s => s.id === slotId);
+        const logData = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || { present: ganaStudents.length, absent: 0, notes: '' };
+        
+        html += `
+          <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--gold-border); padding-bottom: 0.8rem; margin-bottom: 1rem;">
+              <div>
+                <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--saffron-royal); margin-bottom: 0.2rem;">${details.subject}</h4>
+                <span style="font-size: 0.8rem; color: var(--sandalwood);">${slotInfo?.label || ''} — ${details.engSubject}</span>
+              </div>
+            </div>
+            
+            <form class="class-log-form" data-slot-id="${slotId}">
+              <div class="form-row" style="margin-bottom: 1rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.8rem;">Students Present</label>
+                  <input type="number" name="present" class="form-control" value="${logData.present}" min="0" required>
                 </div>
-                <div class="attendance-status-icon">
-                  <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke-width:2.5;">
-                    ${status === 'Present'
-                      ? `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--forest-tulsi);stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
-                      : `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--agni-red);stroke-width:2.5;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
-                    }
-                  </svg>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.8rem;">Students Absent</label>
+                  <input type="number" name="absent" class="form-control" value="${logData.absent}" min="0" required>
                 </div>
               </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `;
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.8rem;">Class Notes (What was taught?)</label>
+                <textarea name="notes" class="form-control" rows="3" placeholder="e.g. I taught Rigveda Mandala 1, Sukta 1. Everyone chanted well.">${logData.notes}</textarea>
+              </div>
+              <button type="submit" class="btn btn-saffron" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Save Class Log</button>
+              <span class="save-indicator" style="margin-left: 10px; font-size: 0.8rem; color: var(--forest-tulsi); display: none;">Saved!</span>
+            </form>
+          </div>
+        `;
+      });
+      
+      html += `</div></div>`;
+      target.innerHTML = html;
+      
+      // Bind form submits
+      target.querySelectorAll('.class-log-form').forEach(form => {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const slotId = form.getAttribute('data-slot-id');
+          const present = parseInt(form.querySelector('[name="present"]').value) || 0;
+          const absent = parseInt(form.querySelector('[name="absent"]').value) || 0;
+          const notes = form.querySelector('[name="notes"]').value;
+          
+          db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { present, absent, notes });
+          
+          const ind = form.querySelector('.save-indicator');
+          ind.style.display = 'inline-block';
+          setTimeout(() => ind.style.display = 'none', 2000);
+        });
+      });
+    }
 
     // Date change
     target.querySelector('#attend-date-input').addEventListener('change', (e) => {
       selectedDateStr = e.target.value;
       loadSubView();
     });
-
-    // Mark all present/absent
-    target.querySelector('#btn-mark-all-present').addEventListener('click', () => {
-      ganaStudents.forEach(s => tempRecords[s.id] = 'Present');
-      renderMarkTabGrid(target, ganaStudents);
-    });
-    target.querySelector('#btn-mark-all-absent').addEventListener('click', () => {
-      ganaStudents.forEach(s => tempRecords[s.id] = 'Absent');
-      renderMarkTabGrid(target, ganaStudents);
-    });
-
-    // Toggle individual student
-    target.querySelector('#attendance-student-grid').addEventListener('click', (e) => {
-      const card = e.target.closest('.attendance-student-card');
-      if (!card) return;
-      const stdId = card.getAttribute('data-student-id');
-      tempRecords[stdId] = tempRecords[stdId] === 'Present' ? 'Absent' : 'Present';
-      renderMarkTabGrid(target, ganaStudents);
-    });
-
-    // Save attendance
-    target.querySelector('#btn-save-attendance').addEventListener('click', () => {
-      db.saveAttendance(selectedGanaId, selectedDateStr, { ...tempRecords });
-      showToast('॥ उपस्थितिः संरक्षिता ॥ Attendance record saved successfully.', 'success');
-    });
   }
 
-  function renderMarkTabGrid(target, ganaStudents) {
-    const grid = target.querySelector('#attendance-student-grid');
-    const presentCount = Object.values(tempRecords).filter(s => s === 'Present').length;
-    const absentCount = ganaStudents.length - presentCount;
-    target.querySelector('#present-summary').textContent = `Present: ${presentCount}`;
-    target.querySelector('#absent-summary').textContent = `Absent: ${absentCount}`;
-
-    ganaStudents.forEach(s => {
-      const card = grid.querySelector(`[data-student-id="${s.id}"]`);
-      if (!card) return;
-      const status = tempRecords[s.id];
-      card.className = `attendance-student-card ${status === 'Present' ? 'present' : 'absent'}`;
-      const iconEl = card.querySelector('.attendance-status-icon');
-      iconEl.innerHTML = status === 'Present'
-        ? `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--forest-tulsi);stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
-        : `<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--agni-red);stroke-width:2.5;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
-    });
-  }
-
+  // Remove the old grid functions by just returning early or ignoring them
   function renderRegisterTab(target, ganaStudents, selectedGana) {
     const daysCount = 15;
     const today = new Date();

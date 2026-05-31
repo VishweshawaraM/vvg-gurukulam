@@ -358,85 +358,19 @@ export function renderStudents(container, appInstance) {
         <button class="drawer-close-btn"><svg viewBox="0 0 24 24" style="width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2.2;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="drawer-body">
-        
         <form id="add-student-form">
           <div class="form-group">
-            <label class="form-label">
-              <span>छात्रनाम (Student English Name) *</span>
-              <span class="form-label-sanskrit">नाम</span>
-            </label>
+            <label class="form-label"><span>छात्रनाम (Student Name) *</span></label>
             <input type="text" id="add-name" class="form-control" placeholder="e.g. Mahadeva Bhatta" required>
           </div>
-          
           <div class="form-group">
-            <label class="form-label">
-              <span>देवनागरीनाम (Sanskrit Name) *</span>
-              <span class="form-label-sanskrit">संस्कृतनाम</span>
-            </label>
-            <input type="text" id="add-sanskrit-name" class="form-control" placeholder="यथा - महादेवभट्टः" required>
+            <label class="form-label"><span>गणनियोजनम् (Gana Assignment) *</span></label>
+            <select id="add-gana" class="form-control" required>
+              ${db.getAllGanas().map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
           </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label"><span>जन्मदिनाङ्कः (D.O.B) *</span></label>
-              <input type="date" id="add-dob" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label"><span>प्रवेशदिनाङ्कः (Joining Date) *</span></label>
-              <input type="date" id="add-joining-date" class="form-control" value="${new Date().toISOString().split('T')[0]}" required>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label"><span>गणनियोजनम् (Gana Assignment) *</span></label>
-              <select id="add-gana" class="form-control" required>
-                ${db.getAllGanas().map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label class="form-label"><span>वेदशाखा (Veda Branch) *</span></label>
-              <select id="add-veda-branch" class="form-control" required>
-                <option>Rigveda (Shakala Shakha)</option>
-                <option>Krishna Yajurveda (Taittiriya Shakha)</option>
-                <option>Samaveda (Kauthuma Shakha)</option>
-                <option>Atharvaveda (Shaunaka Shakha)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-              <label class="form-label"><span>कक्षावर्षम् (Academic Year) *</span></label>
-              <input type="text" id="add-class" class="form-control" placeholder="e.g. Vidyaranya (Year 1)" required>
-            </div>
-
-          <div class="form-group">
-            <label class="form-label"><span>अभिभावकनाम (Parent Name) *</span></label>
-            <input type="text" id="add-parent-name" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label"><span>अभिभावक-दूरभाषः (Parent Contact) *</span></label>
-            <input type="text" id="add-parent-contact" class="form-control" placeholder="e.g. +91 94480 12345" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label"><span>मूलसङ्केतः (Home Address) *</span></label>
-            <textarea id="add-address" class="form-control" rows="2" required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label"><span>आचार्य-टिप्पणी (Notes)</span></label>
-            <textarea id="add-notes" class="form-control" rows="2" placeholder="Dietary rules, grammar accuracy details..."></textarea>
-          </div>
-          
-          <button type="submit" class="btn btn-saffron" style="width: 100%; margin-top: 1rem;">
-            पञ्जीकरणं क्रियताम् (Save Student Profile)
-          </button>
+          <button type="submit" class="btn btn-saffron" style="width: 100%; margin-top: 1rem;">पञ्जीकरणं क्रियताम् (Save Student)</button>
         </form>
-
       </div>
     `;
 
@@ -444,21 +378,13 @@ export function renderStudents(container, appInstance) {
 
     drawer.querySelector('#add-student-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      
       const newStudent = {
         name: drawer.querySelector('#add-name').value,
-        sanskritName: drawer.querySelector('#add-sanskrit-name').value,
-        dob: drawer.querySelector('#add-dob').value,
-        joiningDate: drawer.querySelector('#add-joining-date').value,
         ganaId: drawer.querySelector('#add-gana').value,
-        vedaBranch: drawer.querySelector('#add-veda-branch').value,
-        classYear: drawer.querySelector('#add-class').value,
-        parentName: drawer.querySelector('#add-parent-name').value,
-        parentContact: drawer.querySelector('#add-parent-contact').value,
-        address: drawer.querySelector('#add-address').value,
-        notes: drawer.querySelector('#add-notes').value
+        sanskritName: '', dob: '', joiningDate: new Date().toISOString().split('T')[0],
+        vedaBranch: 'Rigveda', classYear: 'Year 1', parentName: '',
+        parentContact: '', address: '', notes: ''
       };
-
       db.addStudent(newStudent);
       closeDrawer();
       renderList();

@@ -696,7 +696,7 @@ export const db = {
   },
 
   // â”€â”€â”€ Attendance â”€â”€â”€
-  getAttendance(ganaId, dateStr) {
+  getClassLog(ganaId, dateStr, slotId) {\n    return this.data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;\n  },\n\n  saveClassLog(ganaId, dateStr, slotId, logData) {\n    if (!this.data.attendanceLog[ganaId]) this.data.attendanceLog[ganaId] = {};\n    if (!this.data.attendanceLog[ganaId][dateStr]) this.data.attendanceLog[ganaId][dateStr] = {};\n    this.data.attendanceLog[ganaId][dateStr][slotId] = logData;\n    this.save(this.data);\n  },\n\n  getAttendance(ganaId, dateStr) {
     const data = this.get();
     return (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
   },
