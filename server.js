@@ -17,6 +17,36 @@ const crypto = require('crypto');
 const PORT     = process.env.PORT || 3000;
 const FIREBASE = 'https://vvg-edu-sys-default-rtdb.firebaseio.com';
 
+// ── Polyfill fetch for older Node versions on Render ────────
+const https = require('https');
+if (typeof global.fetch !== 'function') {
+  global.fetch = function(url, options = {}) {
+    return new Promise((resolve, reject) => {
+      const req = https.request(url, {
+        method: options.method || 'GET',
+        headers: options.headers || {}
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            text: () => Promise.resolve(body),
+            json: () => {
+              try { return Promise.resolve(JSON.parse(body)); }
+              catch(e) { return Promise.reject(e); }
+            }
+          });
+        });
+      });
+      req.on('error', reject);
+      if (options.body) req.write(options.body);
+      req.end();
+    });
+  };
+}
+
 // ── Load Acharya / User credentials from Firebase ────────
 let USERS = [];
 fetch(`${FIREBASE}/users.json`)
