@@ -15,25 +15,20 @@ const path   = require('path');
 const crypto = require('crypto');
 
 const PORT     = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
-const DB_FILE  = path.join(DATA_DIR, 'vvg_database.json');
-const USR_FILE = path.join(DATA_DIR, 'users.json');
+const FIREBASE = 'https://vvg-edu-sys-default-rtdb.firebaseio.com';
 
-// ── Ensure data directory exists ──────────────────────────
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-// ── Load Acharya / User credentials ──────────────────────
+// ── Load Acharya / User credentials from Firebase ────────
 let USERS = [];
-try {
-  USERS = JSON.parse(fs.readFileSync(USR_FILE, 'utf-8'));
-  console.log(`[VVG] Loaded ${USERS.length} user accounts.`);
-} catch (e) {
-  console.warn('[VVG] users.json not found. Only demo login will work.');
-  USERS = [
-    { id: 'usr_admin',  name: 'Pradhana Acharyah', nameSa: 'प्रधानाचार्यः',  email: 'admin@vvgurukulam.org',  password: 'vvg@admin2026',  role: 'Admin',        ganaId: null },
-    { id: 'usr_office', name: 'Karyalaya Sevaka',   nameSa: 'कार्यालयसेवकः', email: 'office@vvgurukulam.org', password: 'vvg@office2026', role: 'Office Staff', ganaId: null }
-  ];
-}
+fetch(`${FIREBASE}/users.json`)
+  .then(res => res.json())
+  .then(data => {
+    if (data && Array.isArray(data)) {
+      USERS = data;
+      console.log(`[VVG] Loaded ${USERS.length} user accounts from Firebase.`);
+    }
+  })
+  .catch(e => console.warn('[VVG] Could not load users from Firebase', e));
+
 
 // ── In-memory session store ───────────────────────────────
 const SESSIONS = {};
@@ -157,14 +152,14 @@ const server = http.createServer(async (req, res) => {
   // ── GET /api/db — load database ──────────
   if (req.method === 'GET' && parsedUrl === '/api/db') {
     try {
-      if (fs.existsSync(DB_FILE)) {
-        const raw = fs.readFileSync(DB_FILE, 'utf-8');
+      const dbRes = await fetch(`${FIREBASE}/vvg_database.json`);
+      if (dbRes.ok) {
+        const raw = await dbRes.text();
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.end(raw);
       } else {
-        // No saved DB yet — return empty signal
         res.statusCode = 204;
         res.end();
       }
@@ -179,7 +174,11 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       if (body && body.students) {
-        fs.writeFileSync(DB_FILE, JSON.stringify(body));
+        await fetch(`${FIREBASE}/vvg_database.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
         return jsonRes(res, 200, { success: true, savedAt: new Date().toISOString() });
       }
       return jsonRes(res, 400, { success: false, message: 'Invalid data structure' });
@@ -226,14 +225,15 @@ const server = http.createServer(async (req, res) => {
         registeredAt:   new Date().toISOString()
       };
 
-      // Append to users.json
-      const USERS_FILE = path.join(__dirname, 'data', 'users.json');
-      const allUsers = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-      allUsers.push(newUser);
-      fs.writeFileSync(USERS_FILE, JSON.stringify(allUsers, null, 2));
-
-      // Reload USERS in memory
+      // Append to Firebase
       USERS.push(newUser);
+      await fetch(`${FIREBASE}/users.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(USERS)
+      });
+
+
 
       console.log(`[VVG] ★ New Acharya registered: ${newUser.name} <${newUser.email}> — PENDING ADMIN APPROVAL`);
       return jsonRes(res, 200, {
