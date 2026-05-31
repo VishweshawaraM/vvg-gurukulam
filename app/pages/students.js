@@ -45,8 +45,8 @@ export function renderStudents(container, appInstance) {
                 </div>
               </td>
               <td><span class="badge badge-saffron">${ganaName}</span></td>
-              <td>${s.veda || ''}${s.shastra && s.shastra !== 'None' ? ' / ' + s.shastra : ''}</td>
-              <td>${s.classYear}</td>
+              <td><span style="font-weight: 700; color: var(--gold-leaf);">${s.shastra && s.shastra !== 'None' ? s.shastra : 'None (Junior)'}</span></td>
+              <td>${s.veda || 'None'}</td>
               ${!isReadOnly ? `
                 <td>
                   <div style="display: flex; gap: 8px;">
@@ -142,8 +142,8 @@ export function renderStudents(container, appInstance) {
             <tr>
               <th>नाम (Name)</th>
               <th>गणः (Gaṇa)</th>
-              <th>वेदशाखा (Veda Branch)</th>
-              <th>अकादमिकवर्षम् (Year)</th>
+              <th>विभागः (Vibhāgaḥ)</th>
+              <th>वेदः (Veda)</th>
               <th style="width: 140px;">कार्यम् (Actions)</th>
             </tr>
           </thead>
@@ -295,13 +295,13 @@ export function renderStudents(container, appInstance) {
           </div>
           
           <div class="student-info-item">
-            <span class="student-info-label">वेदशाखा (Veda Branch)</span>
-            <span class="student-info-value">${student.vedaBranch}</span>
+            <span class="student-info-label">विभागः (Vibhāgaḥ)</span>
+            <span class="student-info-value" style="font-weight: 700; color: var(--gold-leaf);">${student.shastra && student.shastra !== 'None' ? student.shastra : 'None (Junior)'}</span>
           </div>
           
           <div class="student-info-item">
-            <span class="student-info-label">अकादमिकवर्षम् (Year)</span>
-            <span class="student-info-value">${student.classYear}</span>
+            <span class="student-info-label">वेदः (Veda)</span>
+            <span class="student-info-value">${student.veda || 'None'}</span>
           </div>
           
           <div class="student-info-item">
@@ -368,16 +368,29 @@ export function renderStudents(container, appInstance) {
             <label class="form-label"><span>छात्रनाम (Student Name) *</span></label>
             <input type="text" id="add-name" class="form-control" placeholder="e.g. Mahadeva Bhatta" required>
           </div>
-          <div class="form-group">
-            <label class="form-label"><span>विशेषविषयः (Specialized Subject) *</span></label>
-            <select id="add-specialization" class="form-control" required>
-              <option value="" disabled selected>Select Subject</option>
-              <option value="Shukla Yajurveda">Shukla Yajurveda</option>
-              <option value="Krishna Yajurveda">Krishna Yajurveda</option>
-              <option value="Vedanta">Vedanta</option>
-              <option value="Vyakarana">Vyakarana</option>
-              <option value="Mimamsa">Mimamsa</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label"><span>वेदः (Veda) *</span></label>
+              <select id="add-veda" class="form-control" required>
+                <option value="" disabled selected>Select Veda</option>
+                <option value="Rigveda">Rigveda</option>
+                <option value="Shukla Yajurveda">Shukla Yajurveda</option>
+                <option value="Krishna Yajurveda">Krishna Yajurveda</option>
+                <option value="Samaveda">Samaveda</option>
+                <option value="Atharvaveda">Atharvaveda</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span>विभागः (Vibhāgaḥ / Department) *</span></label>
+              <select id="add-shastra" class="form-control" required>
+                <option value="None" selected>None (Junior)</option>
+                <option value="Vyakarana">Vyakarana</option>
+                <option value="Vedanta">Vedanta</option>
+                <option value="Mimamsa">Mimamsa</option>
+                <option value="Nyaya">Nyaya</option>
+                <option value="Jyotisha">Jyotisha</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label"><span>गणनियोजनम् (Gana Assignment) *</span></label>
@@ -397,7 +410,7 @@ export function renderStudents(container, appInstance) {
       const newStudent = {
         name: drawer.querySelector('#add-name').value,
         ganaId: drawer.querySelector('#add-gana').value,
-        specialization: drawer.querySelector('#add-specialization').value,
+        veda: drawer.querySelector('#add-veda').value, shastra: drawer.querySelector('#add-shastra').value,
         sanskritName: '', dob: '', joiningDate: new Date().toISOString().split('T')[0],
         parentName: '', parentContact: '', address: '', notes: ''
       };
@@ -453,15 +466,28 @@ export function renderStudents(container, appInstance) {
               </select>
             </div>
             
-            <div class="form-group">
-              <label class="form-label"><span>विशेषविषयः (Specialized Subject) *</span></label>
-              <select id="edit-specialization" class="form-control" required>
-                <option value="Shukla Yajurveda" ${student.specialization === 'Shukla Yajurveda' ? 'selected' : ''}>Shukla Yajurveda</option>
-                <option value="Krishna Yajurveda" ${student.specialization === 'Krishna Yajurveda' ? 'selected' : ''}>Krishna Yajurveda</option>
-                <option value="Vedanta" ${student.specialization === 'Vedanta' ? 'selected' : ''}>Vedanta</option>
-                <option value="Vyakarana" ${student.specialization === 'Vyakarana' ? 'selected' : ''}>Vyakarana</option>
-                <option value="Mimamsa" ${student.specialization === 'Mimamsa' ? 'selected' : ''}>Mimamsa</option>
-              </select>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label"><span>वेदः (Veda) *</span></label>
+                <select id="edit-veda" class="form-control" required>
+                  <option value="Rigveda" ${student.veda === 'Rigveda' ? 'selected' : ''}>Rigveda</option>
+                  <option value="Shukla Yajurveda" ${student.veda === 'Shukla Yajurveda' ? 'selected' : ''}>Shukla Yajurveda</option>
+                  <option value="Krishna Yajurveda" ${student.veda === 'Krishna Yajurveda' ? 'selected' : ''}>Krishna Yajurveda</option>
+                  <option value="Samaveda" ${student.veda === 'Samaveda' ? 'selected' : ''}>Samaveda</option>
+                  <option value="Atharvaveda" ${student.veda === 'Atharvaveda' ? 'selected' : ''}>Atharvaveda</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span>विभागः (Vibhāgaḥ / Department) *</span></label>
+                <select id="edit-shastra" class="form-control" required>
+                  <option value="None" ${student.shastra === 'None' ? 'selected' : ''}>None (Junior)</option>
+                  <option value="Vyakarana" ${student.shastra === 'Vyakarana' ? 'selected' : ''}>Vyakarana</option>
+                  <option value="Vedanta" ${student.shastra === 'Vedanta' ? 'selected' : ''}>Vedanta</option>
+                  <option value="Mimamsa" ${student.shastra === 'Mimamsa' ? 'selected' : ''}>Mimamsa</option>
+                  <option value="Nyaya" ${student.shastra === 'Nyaya' ? 'selected' : ''}>Nyaya</option>
+                  <option value="Jyotisha" ${student.shastra === 'Jyotisha' ? 'selected' : ''}>Jyotisha</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -504,7 +530,7 @@ export function renderStudents(container, appInstance) {
         dob: drawer.querySelector('#edit-dob').value,
         joiningDate: drawer.querySelector('#edit-joining-date').value,
         ganaId: drawer.querySelector('#edit-gana').value,
-        specialization: drawer.querySelector('#edit-specialization').value,
+        veda: drawer.querySelector('#edit-veda').value, shastra: drawer.querySelector('#edit-shastra').value,
         parentName: drawer.querySelector('#edit-parent-name').value,
         parentContact: drawer.querySelector('#edit-parent-contact').value,
         address: drawer.querySelector('#edit-address').value,
