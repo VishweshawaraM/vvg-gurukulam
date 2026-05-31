@@ -123,6 +123,11 @@ const server = http.createServer(async (req, res) => {
       return jsonRes(res, 401, { success: false, message: 'Invalid email or password. Please check your credentials.' });
     }
 
+    // Check if account is pending approval
+    if (user.role === 'Pending') {
+      return jsonRes(res, 403, { success: false, message: 'Your registration is pending Admin approval. Please contact the Gurukula office to activate your account.' });
+    }
+
     // Generate session token
     const token = crypto.randomBytes(24).toString('hex');
     const sessionUser = {
