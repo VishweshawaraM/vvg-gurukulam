@@ -7,9 +7,6 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "keywords": ["gurukula", "veda", "education"],
   "author": "Veda Vijnana Gurukulam",
   "license": "ISC"
