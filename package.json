@@ -1,0 +1,16 @@
+{
+  "name": "vvg-gurukulam",
+  "version": "3.2.0",
+  "description": "Veda Vijnana Gurukulam Management System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": ["gurukula", "veda", "education"],
+  "author": "Veda Vijnana Gurukulam",
+  "license": "ISC"
+}
