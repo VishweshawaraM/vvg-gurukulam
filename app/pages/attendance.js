@@ -181,12 +181,12 @@ export function renderAttendance(container, appInstance) {
 
   function renderMarkTab(target, ganaStudents, selectedGana) {
     const slots = db.getAllTimeSlots();
+    const allAcharyas = db.getAllAcharyas();
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const selectedDateObj = new Date(selectedDateStr);
     const dayName = dayNames[selectedDateObj.getDay()];
 
     const dailyTimetable = db.getTimetable(selectedGanaId) || {};
-    const activeSlots = Object.entries(dailyTimetable).filter(([k, v]) => v && v.subject);
 
     let html = `
       <div class="gurukula-card framed">
@@ -202,111 +202,198 @@ export function renderAttendance(container, appInstance) {
           <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); display: block; margin-bottom: 3px;">Select Date</label>
           <input type="date" id="attend-date-input" class="form-control" style="width: 200px; padding: 0.5rem 0.85rem;" value="${selectedDateStr}">
         </div>
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
     `;
 
-    if (activeSlots.length === 0) {
-      html += `
-        <div style="text-align: center; padding: 3rem; color: var(--sandal-light);">
-          <p>No classes scheduled for ${dayName} in the timetable.</p>
-        </div>
-      </div>`;
-      target.innerHTML = html;
-    } else {
-      html += `<div style="display: flex; flex-direction: column; gap: 1.5rem;">`;
-      
-      activeSlots.forEach(([slotId, details]) => {
-        const slotInfo = slots[slotId];
-        const classLog = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || { notes: '' };
-        const attendanceLog = db.getAttendance(selectedGanaId, selectedDateStr) || {};
-        
-        // Detect Veda/Shastra specialization
-        let eligibleStudents = ganaStudents;
-        const sub = (details.engSubject || '').toLowerCase() + ' ' + (details.subject || '').toLowerCase();
-        let detectedType = 'All Students';
-        
-        if (sub.includes('vyakarana') || sub.includes('kaumudi') || sub.includes('mahabhashya') || sub.includes('manorama')) {
-            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Vyakarana' || (s.shastra || 'None') === 'None');
-            detectedType = 'Vyakarana Students';
-        } else if (sub.includes('vedanta') || sub.includes('sutram') || sub.includes('advaita') || sub.includes('bhashyam')) {
-            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Vedanta' || (s.shastra || 'None') === 'None');
-            detectedType = 'Vedanta Students';
-        } else if (sub.includes('mimamsa') || sub.includes('nyaya') || sub.includes('tarka')) {
-            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Mimamsa' || (s.shastra || 'None') === 'Nyaya' || (s.shastra || 'None') === 'None');
-            detectedType = 'Mimamsa/Nyaya Students';
-        }
+    Object.keys(slots).forEach(slotId => {
+      const slotInfo = slots[slotId];
+      const timetableDetails = dailyTimetable[slotId] || {};
+      const classLog = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || {};
+      const attendanceLog = db.getAttendance(selectedGanaId, selectedDateStr) || {};
 
-        html += `
-          <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--gold-border); padding-bottom: 0.8rem; margin-bottom: 1rem;">
-              <div>
-                <h4 style="font-family: var(--font-header); font-size: 1.1rem; color: var(--saffron-royal); margin-bottom: 0.2rem;">${details.subject}</h4>
-                <span style="font-size: 0.8rem; color: var(--sandalwood);">${slotInfo?.time || slotInfo?.label || ''} — ${details.engSubject}</span>
-                <span style="margin-left:10px; font-size: 0.7rem; background: var(--saffron-royal); color: white; padding: 2px 6px; border-radius: 4px;">${detectedType}</span>
+      // Merge timetable details with dynamic slot logs if saved on this date
+      const subject = classLog.subject || timetableDetails.subject || '';
+      const engSubject = classLog.engSubject || timetableDetails.engSubject || '';
+      const teacher = classLog.teacher || timetableDetails.teacher || '';
+      const teacherEn = classLog.teacherEn || timetableDetails.teacherEn || '';
+
+      // Detect Veda/Shastra specialization
+      let eligibleStudents = ganaStudents;
+      const sub = (engSubject || '').toLowerCase() + ' ' + (subject || '').toLowerCase();
+      let detectedType = 'All Students';
+      
+      if (sub.includes('vyakarana') || sub.includes('kaumudi') || sub.includes('mahabhashya') || sub.includes('manorama')) {
+          detectedType = 'Vyakarana Students';
+      } else if (sub.includes('vedanta') || sub.includes('sutram') || sub.includes('advaita') || sub.includes('bhashyam')) {
+          detectedType = 'Vedanta Students';
+      } else if (sub.includes('mimamsa') || sub.includes('nyaya') || sub.includes('tarka')) {
+          detectedType = 'Mimamsa/Nyaya Students';
+      }
+
+      html += `
+        <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border); padding: 1.25rem;">
+          <!-- Header Row -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--gold-border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--saffron-royal); letter-spacing: 1px; display: block;">
+                ${slotInfo?.label || ''} (${slotInfo?.labelEn || ''})
+              </span>
+              <span style="font-family: var(--font-header); font-size: 1.25rem; font-weight: 800; color: var(--charcoal-sandal);">
+                ${slotInfo?.time || ''}
+              </span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--sandalwood);">Roster:</span>
+              <select class="spec-filter-select form-control" style="width: 190px; padding: 0.35rem 0.65rem; font-size: 0.78rem; height: auto; background-color: white;">
+                <option value="all" ${detectedType === 'All Students' ? 'selected' : ''}>All Students (सर्वे छात्राः)</option>
+                <option value="vyakarana" ${detectedType === 'Vyakarana Students' ? 'selected' : ''}>Vyakarana (व्याकरणम्)</option>
+                <option value="vedanta" ${detectedType === 'Vedanta Students' ? 'selected' : ''}>Vedanta (वेदान्तः)</option>
+                <option value="mimamsa" ${detectedType === 'Mimamsa/Nyaya Students' ? 'selected' : ''}>Mimamsa/Nyaya (मीमांसा)</option>
+              </select>
+            </div>
+          </div>
+          
+          <form class="class-log-form" data-slot-id="${slotId}">
+            <!-- Dynamic Fields -->
+            <div class="form-row" style="margin-bottom: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">विषयः (Sanskrit Subject)</label>
+                <input type="text" name="subject" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" placeholder="e.g. Open Study / Open Class" value="${subject}">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Subject (English)</label>
+                <input type="text" name="engSubject" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" placeholder="e.g. Open Study / Open Class" value="${engSubject}">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">आचार्यः (Teacher / Guru)</label>
+                <select name="teacherId" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; height: auto; background-color: white;">
+                  <option value="">Select Acharya / Guru</option>
+                  ${allAcharyas.map(a => {
+                    const isSel = classLog.teacherId === a.id || (!classLog.teacherId && (teacher === a.name || teacherEn === a.name || teacherEn.includes(a.name.split(' ')[0])));
+                    return `<option value="${a.id}" ${isSel ? 'selected' : ''}>${a.name} (${a.sanskritName})</option>`;
+                  }).join('')}
+                </select>
               </div>
             </div>
-            
-            <form class="class-log-form" data-slot-id="${slotId}">
-              <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 1rem;">
-                ${eligibleStudents.map(s => {
-                  // For backward compatibility, check if the student was marked absent globally or for this slot.
-                  const isPresent = !attendanceLog[slotId] || attendanceLog[slotId][s.id] !== 'Absent';
-                  return `
-                  <label style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px; border: 1px solid var(--gold-border); border-radius: 6px; cursor: pointer;">
-                    <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 18px; height: 18px;">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--charcoal-sandal);">${s.name}</span>
-                  </label>
-                  `;
-                }).join('')}
-              </div>
 
-              <div class="form-group">
-                <label class="form-label" style="font-size: 0.8rem;">Class Notes (What was taught?)</label>
-                <textarea name="notes" class="form-control" rows="2" placeholder="e.g. I taught Rigveda Mandala 1, Sukta 1...">${classLog.notes}</textarea>
-              </div>
+            <!-- Student Checkbox Grid -->
+            <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px;">
+              छात्र-उपस्थितिः (Student Checkboxes)
+            </div>
+            <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
+              ${ganaStudents.map(s => {
+                const isPresent = !attendanceLog[slotId] || attendanceLog[slotId][s.id] !== 'Absent';
+                
+                // Compute displays
+                let shouldDisplay = true;
+                if (detectedType === 'Vyakarana Students') {
+                  shouldDisplay = (s.shastra || 'None') === 'Vyakarana' || (s.shastra || 'None') === 'None';
+                } else if (detectedType === 'Vedanta Students') {
+                  shouldDisplay = (s.shastra || 'None') === 'Vedanta' || (s.shastra || 'None') === 'None';
+                } else if (detectedType === 'Mimamsa/Nyaya Students') {
+                  shouldDisplay = (s.shastra || 'None') === 'Mimamsa' || (s.shastra || 'None') === 'Nyaya' || (s.shastra || 'None') === 'None';
+                }
+                
+                return `
+                <label class="student-label" data-shastra="${s.shastra || 'None'}" style="display: ${shouldDisplay ? 'flex' : 'none'}; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
+                  <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
+                </label>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Notes (What was taught today?)</label>
+              <textarea name="notes" class="form-control" rows="2" style="font-size: 0.85rem;" placeholder="e.g. Recited Rigveda Mandala 1 Sukta 2, practiced grammar rules...">${classLog.notes || ''}</textarea>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div style="display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 10px;">
-                <button type="submit" class="btn btn-saffron" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Save Slot Attendance</button>
-                <button type="button" class="btn btn-ghost btn-sm mark-all-btn">Toggle All</button>
-                <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); display: none;">Saved!</span>
+                <button type="submit" class="btn btn-saffron" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 800;">
+                  Save Slot Attendance
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm mark-all-btn" style="font-size: 0.78rem;">Toggle All</button>
               </div>
-            </form>
-          </div>
-        `;
-      });
+              <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); font-weight: 800; display: none; align-items: center; gap: 4px;">
+                <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Saved!
+              </span>
+            </div>
+          </form>
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+    target.innerHTML = html;
+    
+    // Bind form submits
+    target.querySelectorAll('.class-log-form').forEach(form => {
+      const slotId = form.getAttribute('data-slot-id');
       
-      html += `</div></div>`;
-      target.innerHTML = html;
-      
-      // Bind form submits
-      target.querySelectorAll('.class-log-form').forEach(form => {
-        // Toggle All button
-        form.querySelector('.mark-all-btn').addEventListener('click', () => {
-          const checkboxes = form.querySelectorAll('input[type="checkbox"]');
-          const allChecked = Array.from(checkboxes).every(c => c.checked);
-          checkboxes.forEach(c => c.checked = !allChecked);
+      // Filter dropdown binding
+      const specSelect = form.closest('.gurukula-card').querySelector('.spec-filter-select');
+      specSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        form.querySelectorAll('.student-label').forEach(label => {
+          const shastra = label.getAttribute('data-shastra');
+          if (val === 'all') {
+            label.style.display = 'flex';
+          } else if (val === 'vyakarana') {
+            label.style.display = (shastra === 'Vyakarana' || shastra === 'None') ? 'flex' : 'none';
+          } else if (val === 'vedanta') {
+            label.style.display = (shastra === 'Vedanta' || shastra === 'None') ? 'flex' : 'none';
+          } else if (val === 'mimamsa') {
+            label.style.display = (shastra === 'Mimamsa' || shastra === 'Nyaya' || shastra === 'None') ? 'flex' : 'none';
+          }
         });
+      });
 
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          const slotId = form.getAttribute('data-slot-id');
-          const notes = form.querySelector('[name="notes"]').value;
-          
-          const studentStatuses = {};
-          form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      // Toggle All button
+      form.querySelector('.mark-all-btn').addEventListener('click', () => {
+        // Select only currently visible checkboxes
+        const visibleLabels = Array.from(form.querySelectorAll('.student-label')).filter(l => l.style.display !== 'none');
+        const checkboxes = visibleLabels.map(l => l.querySelector('input[type="checkbox"]'));
+        const allChecked = checkboxes.every(c => c.checked);
+        checkboxes.forEach(c => c.checked = !allChecked);
+      });
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const notes = form.querySelector('[name="notes"]').value;
+        const subject = form.querySelector('[name="subject"]').value.trim();
+        const engSubject = form.querySelector('[name="engSubject"]').value.trim();
+        const teacherId = form.querySelector('[name="teacherId"]').value;
+        
+        const ach = allAcharyas.find(a => a.id === teacherId);
+        const teacher = ach ? ach.sanskritName : '';
+        const teacherEn = ach ? ach.name : '';
+        
+        const studentStatuses = {};
+        form.querySelectorAll('.student-label').forEach(label => {
+          if (label.style.display !== 'none') {
+            const cb = label.querySelector('input[type="checkbox"]');
             studentStatuses[cb.value] = cb.checked ? 'Present' : 'Absent';
-          });
-          
-          const present = Object.values(studentStatuses).filter(v => v === 'Present').length;
-          const absent = Object.values(studentStatuses).filter(v => v === 'Absent').length;
-
-          db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { present, absent, notes });
-          db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses); // Note: updated to use slotId
-          
-          const ind = form.querySelector('.save-indicator');
-          ind.style.display = 'inline-block';
-          setTimeout(() => ind.style.display = 'none', 2000);
+          }
         });
+        
+        const present = Object.values(studentStatuses).filter(v => v === 'Present').length;
+        const absent = Object.values(studentStatuses).filter(v => v === 'Absent').length;
+
+        db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { 
+          present, absent, notes, subject, engSubject, teacherId, teacher, teacherEn 
+        });
+        db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses);
+        
+        const ind = form.querySelector('.save-indicator');
+        ind.style.display = 'inline-flex';
+        setTimeout(() => ind.style.display = 'none', 2000);
+        showToast(`Saved attendance for: ${subject || 'Open Class'}`, 'success');
       });
-    }
+    });
 
     // Date change
     target.querySelector('#attend-date-input').addEventListener('change', (e) => {
