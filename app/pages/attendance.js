@@ -180,7 +180,7 @@ export function renderAttendance(container, appInstance) {
   }
 
   function renderMarkTab(target, ganaStudents, selectedGana) {
-    const slots = db.getAllTimeSlots();
+    const slots = db.getTimeSlots();
     const allAcharyas = db.getAllAcharyas();
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const selectedDateObj = new Date(selectedDateStr);
@@ -451,7 +451,7 @@ export function renderAttendance(container, appInstance) {
                   // A student is considered present if they were marked present in AT LEAST ONE slot that day.
                   let wasPresent = false;
                   let hasData = false;
-                  const allSlots = db.getAllTimeSlots();
+                  const allSlots = db.getTimeSlots();
                   Object.keys(allSlots).forEach(slotId => {
                       const log = db.getAttendance(selectedGanaId, date, slotId);
                       if (log && log[s.id]) {

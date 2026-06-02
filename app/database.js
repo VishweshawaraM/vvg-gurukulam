@@ -679,9 +679,10 @@ export const db = {
     return stats;
   },
 
-  // â”€â”€â”€ Timetable â”€â”€â”€
+  // ─── Timetable ───
   getTimetable(ganaId) { return this.get().timetable[ganaId] || null; },
   getTimeSlots() { return this.get().timeSlots || {}; },
+  getAllTimeSlots() { return this.getTimeSlots(); },
 
   // Returns full daily schedule: [{slotId, slotInfo, ganaSlots: [{gana, slot}]}]
   getDailyTimetable() {
