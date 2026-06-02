@@ -3,7 +3,7 @@
   Gana (Divisions) Management Page Module
 */
 
-import { db } from '../database.js';
+import { db } from '../database.js?v=2.5';
 
 export function renderGanas(container, appInstance) {
   const ganas = db.getAllGanas();

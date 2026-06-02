@@ -4,18 +4,18 @@
   Full Production Build: All 8 Ganas | Announcements | Sheets
 */
 
-import { router } from './router.js';
-import { db } from './database.js';
+import { router } from './router.js?v=2.5';
+import { db } from './database.js?v=2.5';
 
-import { renderLogin }         from './pages/login.js';
-import { renderDashboard }     from './pages/dashboard.js';
-import { renderStudents }      from './pages/students.js';
-import { renderGanas }         from './pages/ganas.js';
-import { renderAttendance }    from './pages/attendance.js';
-import { renderTimetable }     from './pages/timetable.js';
-import { renderAcharyas }      from './pages/acharyas.js';
-import { renderAnnouncements } from './pages/announcements.js';
-import { renderDocuments }     from './pages/documents.js';
+import { renderLogin }         from './pages/login.js?v=2.5';
+import { renderDashboard }     from './pages/dashboard.js?v=2.5';
+import { renderStudents }      from './pages/students.js?v=2.5';
+import { renderGanas }         from './pages/ganas.js?v=2.5';
+import { renderAttendance }    from './pages/attendance.js?v=2.5';
+import { renderTimetable }     from './pages/timetable.js?v=2.5';
+import { renderAcharyas }      from './pages/acharyas.js?v=2.5';
+import { renderAnnouncements } from './pages/announcements.js?v=2.5';
+import { renderDocuments }     from './pages/documents.js?v=2.5';
 
 const pageRenderers = {
   'login':         renderLogin,

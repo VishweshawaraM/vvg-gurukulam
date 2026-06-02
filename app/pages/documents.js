@@ -4,8 +4,8 @@
   Real file upload, real download, real certificate print
 */
 
-import { db }     from '../database.js';
-import { router } from '../router.js';
+import { db }     from '../database.js?v=2.5';
+import { router } from '../router.js?v=2.5';
 
 export function renderDocuments(container, appInstance) {
   const user     = router.getUserSession();
