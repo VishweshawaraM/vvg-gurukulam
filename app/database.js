@@ -18,11 +18,15 @@ export const db = {
       return seeded;
     }
     const parsed = JSON.parse(data);
-    return {
-      students: [], acharyas: [], ganas: [], timetable: [], timeSlots: [], 
-      attendanceLog: [], documents: [], announcements: [], activities: [], 
+    const result = {
+      students: [], acharyas: [], ganas: [], timetable: {}, timeSlots: {}, 
+      attendanceLog: {}, documents: [], announcements: [], activities: [], 
       sheetsConfig: null, ...parsed
     };
+    if (Array.isArray(result.attendanceLog) || !result.attendanceLog) result.attendanceLog = {};
+    if (Array.isArray(result.timetable) || !result.timetable) result.timetable = {};
+    if (Array.isArray(result.timeSlots) || !result.timeSlots) result.timeSlots = {};
+    return result;
   },
 
   save(data) {
@@ -615,7 +619,14 @@ export const db = {
     const data = this.get();
     const dayLog = (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
     if (!dayLog) return null;
-    if (slotId) return dayLog[slotId] || null;
+    if (slotId) {
+      if (dayLog[slotId]) return dayLog[slotId];
+      // Backward compatibility: if it doesn't contain slotId but has student IDs directly
+      // (meaning it's the old/seeded format), we return the dayLog itself so log[s.id] works.
+      const hasSlotKeys = Object.keys(dayLog).some(k => k.startsWith('slot_'));
+      if (!hasSlotKeys) return dayLog;
+      return null;
+    }
     return dayLog;
   },
   
@@ -649,9 +660,15 @@ export const db = {
       let present = 0, total = ganaStudents.length;
       ganaStudents.forEach(s => { 
         let wasPresent = false;
-        Object.values(dayLog).forEach(slotLog => {
-            if (slotLog[s.id] === 'Present') wasPresent = true;
-        });
+        if (dayLog[s.id] === 'Present') {
+          wasPresent = true;
+        } else {
+          Object.values(dayLog).forEach(slotLog => {
+            if (slotLog && typeof slotLog === 'object' && slotLog[s.id] === 'Present') {
+              wasPresent = true;
+            }
+          });
+        }
         if (wasPresent) present++;
       });
       stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });
@@ -785,15 +802,32 @@ export const db = {
         return [s.id, s.name, s.sanskritName, gana ? gana.englishName : '', s.vedaBranch, s.classYear, s.dob, s.joiningDate, s.parentName, s.parentContact, s.hostelRoom, `"${s.address}"`];
       });
     } else if (type === 'attendance') {
-      const today = new Date().toISOString().split('T')[0];
-      headers = ['Student ID', 'Name', 'Gana', 'Date', 'Status'];
+      headers = ['Student ID', 'Name', 'Gana', 'Date', 'Slot ID', 'Slot Name', 'Status'];
       Object.entries(data.attendanceLog).forEach(([date, ganaLogs]) => {
-        Object.entries(ganaLogs).forEach(([ganaId, studentLogs]) => {
+        // Skip keys that are not date strings (e.g. gana IDs if stored at top-level)
+        if (date.startsWith('gan_')) return;
+        Object.entries(ganaLogs).forEach(([ganaId, slotLogs]) => {
           const gana = data.ganas.find(g => g.id === ganaId);
-          Object.entries(studentLogs).forEach(([stdId, status]) => {
-            const std = data.students.find(s => s.id === stdId);
-            if (std) rows.push([std.id, std.name, gana ? gana.englishName : '', date, status]);
-          });
+          // Check if slotLogs is in slot format (nested keys like 'slot_1')
+          const hasSlotKeys = Object.keys(slotLogs).some(k => k.startsWith('slot_'));
+          if (hasSlotKeys) {
+            Object.entries(slotLogs).forEach(([slotId, studentStatuses]) => {
+              if (studentStatuses && typeof studentStatuses === 'object') {
+                const slotInfo = data.timeSlots?.[slotId] || {};
+                const slotName = slotInfo.labelEn || slotInfo.label || slotId;
+                Object.entries(studentStatuses).forEach(([stdId, status]) => {
+                  const std = data.students.find(s => s.id === stdId);
+                  if (std) rows.push([std.id, std.name, gana ? gana.englishName : '', date, slotId, slotName, status]);
+                });
+              }
+            });
+          } else {
+            // Backward compatibility for old/seeded format
+            Object.entries(slotLogs).forEach(([stdId, status]) => {
+              const std = data.students.find(s => s.id === stdId);
+              if (std) rows.push([std.id, std.name, gana ? gana.englishName : '', date, 'daily', 'Daily Attendance', status]);
+            });
+          }
         });
       });
     }

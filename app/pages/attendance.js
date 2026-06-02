@@ -486,12 +486,17 @@ export function renderAttendance(container, appInstance) {
               let wasAbsent = false;
               let hasData = false;
               if (dayLog) {
-                  Object.values(dayLog).forEach(slotLog => {
-                      if (slotLog[s.id]) {
-                          hasData = true;
-                          if (slotLog[s.id] === 'Absent') wasAbsent = true;
-                      }
-                  });
+                  if (dayLog[s.id]) {
+                      hasData = true;
+                      if (dayLog[s.id] === 'Absent') wasAbsent = true;
+                  } else {
+                      Object.values(dayLog).forEach(slotLog => {
+                          if (slotLog && typeof slotLog === 'object' && slotLog[s.id]) {
+                              hasData = true;
+                              if (slotLog[s.id] === 'Absent') wasAbsent = true;
+                          }
+                      });
+                  }
               }
               if (hasData && wasAbsent) absentDays++;
             });

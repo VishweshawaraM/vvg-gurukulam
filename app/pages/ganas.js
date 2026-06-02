@@ -29,12 +29,23 @@ export function renderGanas(container, appInstance) {
     if (historicalAttendance) {
       let trackedStudentIds = new Set();
       let presentStudentIds = new Set();
-      Object.values(historicalAttendance).forEach(slotLog => {
-         Object.keys(slotLog).forEach(studentId => {
-            trackedStudentIds.add(studentId);
-            if (slotLog[studentId] === 'Present') presentStudentIds.add(studentId);
-         });
-      });
+      const hasSlotKeys = Object.keys(historicalAttendance).some(k => k.startsWith('slot_'));
+      if (hasSlotKeys) {
+        Object.values(historicalAttendance).forEach(slotLog => {
+           if (slotLog && typeof slotLog === 'object') {
+             Object.keys(slotLog).forEach(studentId => {
+                trackedStudentIds.add(studentId);
+                if (slotLog[studentId] === 'Present') presentStudentIds.add(studentId);
+             });
+           }
+        });
+      } else {
+        // Direct format (old or seeded)
+        Object.entries(historicalAttendance).forEach(([studentId, status]) => {
+           trackedStudentIds.add(studentId);
+           if (status === 'Present') presentStudentIds.add(studentId);
+        });
+      }
       const total = trackedStudentIds.size;
       presentCount = presentStudentIds.size;
       todayAttendanceText = total > 0 ? `${Math.round((presentCount/total)*100)}% Present (${presentCount}/${total} Students)` : '0%';
