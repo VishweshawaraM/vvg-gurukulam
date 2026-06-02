@@ -27,10 +27,16 @@ export function renderGanas(container, appInstance) {
     let presentCount = 0;
     
     if (historicalAttendance) {
-      const total = Object.keys(historicalAttendance).length;
-      Object.values(historicalAttendance).forEach(v => {
-        if (v === 'Present') presentCount++;
+      let trackedStudentIds = new Set();
+      let presentStudentIds = new Set();
+      Object.values(historicalAttendance).forEach(slotLog => {
+         Object.keys(slotLog).forEach(studentId => {
+            trackedStudentIds.add(studentId);
+            if (slotLog[studentId] === 'Present') presentStudentIds.add(studentId);
+         });
       });
+      const total = trackedStudentIds.size;
+      presentCount = presentStudentIds.size;
       todayAttendanceText = total > 0 ? `${Math.round((presentCount/total)*100)}% Present (${presentCount}/${total} Students)` : '0%';
     }
 

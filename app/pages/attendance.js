@@ -225,13 +225,13 @@ export function renderAttendance(container, appInstance) {
         let detectedType = 'All Students';
         
         if (sub.includes('vyakarana') || sub.includes('kaumudi') || sub.includes('mahabhashya') || sub.includes('manorama')) {
-            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Vyakarana' || s.shastra === 'None');
+            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Vyakarana' || (s.shastra || 'None') === 'None');
             detectedType = 'Vyakarana Students';
         } else if (sub.includes('vedanta') || sub.includes('sutram') || sub.includes('advaita') || sub.includes('bhashyam')) {
-            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Vedanta' || s.shastra === 'None');
+            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Vedanta' || (s.shastra || 'None') === 'None');
             detectedType = 'Vedanta Students';
         } else if (sub.includes('mimamsa') || sub.includes('nyaya') || sub.includes('tarka')) {
-            eligibleStudents = ganaStudents.filter(s => s.shastra === 'Mimamsa' || s.shastra === 'Nyaya' || s.shastra === 'None');
+            eligibleStudents = ganaStudents.filter(s => (s.shastra || 'None') === 'Mimamsa' || (s.shastra || 'None') === 'Nyaya' || (s.shastra || 'None') === 'None');
             detectedType = 'Mimamsa/Nyaya Students';
         }
 
@@ -366,7 +366,7 @@ export function renderAttendance(container, appInstance) {
                   let hasData = false;
                   const allSlots = db.getAllTimeSlots();
                   Object.keys(allSlots).forEach(slotId => {
-                      const log = db.getAttendance(date, slotId);
+                      const log = db.getAttendance(selectedGanaId, date, slotId);
                       if (log && log[s.id]) {
                           hasData = true;
                           if (log[s.id] === 'Present') wasPresent = true;
@@ -482,8 +482,18 @@ export function renderAttendance(container, appInstance) {
           const alertStudents = ganaStudents.filter(s => {
             let absentDays = 0;
             weekStats.forEach(stat => {
-              const log = db.getAttendance(selectedGanaId, stat.date);
-              if (log && log[s.id] === 'Absent') absentDays++;
+              const dayLog = db.getAttendance(selectedGanaId, stat.date);
+              let wasAbsent = false;
+              let hasData = false;
+              if (dayLog) {
+                  Object.values(dayLog).forEach(slotLog => {
+                      if (slotLog[s.id]) {
+                          hasData = true;
+                          if (slotLog[s.id] === 'Absent') wasAbsent = true;
+                      }
+                  });
+              }
+              if (hasData && wasAbsent) absentDays++;
             });
             return absentDays >= 2;
           });

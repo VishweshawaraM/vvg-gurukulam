@@ -610,28 +610,21 @@ export const db = {
     data.attendanceLog[ganaId][dateStr][slotId] = logData;
     this.save(data);
   },
-  getClassLog(ganaId, dateStr, slotId) {
-    const data = this.get();
-    return data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;
-  },
 
-  saveClassLog(ganaId, dateStr, slotId, logData) {
+  getAttendance(ganaId, dateStr, slotId = null) {
     const data = this.get();
-    if (!data.attendanceLog) data.attendanceLog = {};
-    if (!data.attendanceLog[ganaId]) data.attendanceLog[ganaId] = {};
-    if (!data.attendanceLog[ganaId][dateStr]) data.attendanceLog[ganaId][dateStr] = {};
-    data.attendanceLog[ganaId][dateStr][slotId] = logData;
-    this.save(data);
+    const dayLog = (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
+    if (!dayLog) return null;
+    if (slotId) return dayLog[slotId] || null;
+    return dayLog;
   },
-
-  getAttendance(ganaId, dateStr) {
-    const data = this.get();
-    return (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
-  },
-  saveAttendance(ganaId, dateStr, studentStatuses) {
+  
+  saveAttendance(ganaId, dateStr, slotId, studentStatuses) {
     const data = this.get();
     if (!data.attendanceLog[dateStr]) data.attendanceLog[dateStr] = {};
-    data.attendanceLog[dateStr][ganaId] = studentStatuses;
+    if (!data.attendanceLog[dateStr][ganaId]) data.attendanceLog[dateStr][ganaId] = {};
+    data.attendanceLog[dateStr][ganaId][slotId] = studentStatuses;
+    
     data.students.forEach(student => {
       if (student.ganaId === ganaId && studentStatuses[student.id]) {
         if (!student.attendanceHistory) student.attendanceHistory = {};
@@ -643,6 +636,7 @@ export const db = {
     this.addActivity(`Attendance updated for ${gana ? gana.name : ganaId} on ${dateStr}`, 'tulsi');
     return true;
   },
+  
   getAttendanceStats(ganaId, days = 7) {
     const data = this.get();
     const ganaStudents = data.students.filter(s => s.ganaId === ganaId);
@@ -651,9 +645,15 @@ export const db = {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const log = (data.attendanceLog[dateStr] || {})[ganaId] || {};
+      const dayLog = (data.attendanceLog[dateStr] || {})[ganaId] || {};
       let present = 0, total = ganaStudents.length;
-      ganaStudents.forEach(s => { if (log[s.id] === 'Present') present++; });
+      ganaStudents.forEach(s => { 
+        let wasPresent = false;
+        Object.values(dayLog).forEach(slotLog => {
+            if (slotLog[s.id] === 'Present') wasPresent = true;
+        });
+        if (wasPresent) present++;
+      });
       stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });
     }
     return stats;
