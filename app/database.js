@@ -43,7 +43,6 @@ export const db = {
     }).catch(() => { /* offline â€” data is safe in localStorage */ });
   },
 
-  // â”€â”€â”€ Init: load from server on first load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async syncFromServer() {
     try {
       const res = await fetch('/api/db');
@@ -60,13 +59,17 @@ export const db = {
       }
       
       if (serverData && typeof serverData === 'object') {
-        localStorage.setItem(DB_KEY, JSON.stringify(serverData));
-        localStorage.setItem(DB_KEY + '_version', DB_VERSION);
-        console.log('[VVG] Database and Users synced from server.');
-        return true;
+        const localRaw = localStorage.getItem(DB_KEY);
+        const serverRaw = JSON.stringify(serverData);
+        if (localRaw !== serverRaw) {
+          localStorage.setItem(DB_KEY, serverRaw);
+          localStorage.setItem(DB_KEY + '_version', DB_VERSION);
+          console.log('[VVG] Database and Users synced from server (Data updated).');
+          return true;
+        }
       }
     } catch (e) {
-      console.warn('[VVG] Server offline â€” using local data.');
+      console.warn('[VVG] Server offline — using local data.');
     }
     return false;
   },

@@ -277,6 +277,31 @@ export const app = {
         setTimeout(() => splash.remove(), 500);
       }, 800);
     }
+
+    // Background polling: sync from server every 20 seconds to keep all campus devices in perfect synchronization
+    setInterval(async () => {
+      const activeHash = router.currentRoute;
+      if (activeHash && activeHash !== 'login') {
+        const updated = await db.syncFromServer();
+        if (updated) {
+          console.log('[VVG] Background sync completed. Data updated.');
+          // Re-render active view to show latest synchronized data
+          const viewport = document.getElementById('app-viewport');
+          const renderFn = pageRenderers[activeHash];
+          if (renderFn && viewport) {
+            try {
+              // We keep the active form open by checking if a drawer is open.
+              // If a drawer is open, we do not re-render to avoid losing user input.
+              const drawer = document.querySelector('.gurukula-drawer');
+              if (!drawer || !drawer.classList.contains('open')) {
+                viewport.innerHTML = '';
+                renderFn(viewport, this);
+              }
+            } catch(e) { console.error(e); }
+          }
+        }
+      }
+    }, 20000);
   },
 
   renderLoginView() {
@@ -342,6 +367,18 @@ export const app = {
       try {
         viewport.innerHTML = '';
         renderFn(viewport, this);
+
+        // Background sync on navigation: check for updates immediately in the background
+        db.syncFromServer().then(updated => {
+          if (updated && router.currentRoute === activeHash) {
+            console.log(`[VVG] Navigation sync: Data updated for page "${activeHash}". Re-rendering.`);
+            const drawer = document.querySelector('.gurukula-drawer');
+            if (!drawer || !drawer.classList.contains('open')) {
+              viewport.innerHTML = '';
+              renderFn(viewport, this);
+            }
+          }
+        });
       } catch (err) {
         console.error(`Render Failure on page "${activeHash}":`, err);
         viewport.innerHTML = `
