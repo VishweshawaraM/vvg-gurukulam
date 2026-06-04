@@ -236,17 +236,17 @@ export function renderAttendance(container, appInstance) {
         <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border); padding: 1.25rem;">
           <!-- Header Row -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--gold-border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
-            <div>
-              <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--saffron-royal); letter-spacing: 1px; display: block;">
-                ${slotInfo?.label || ''} (${slotInfo?.labelEn || ''})
+             <div>
+              <span style="font-size: 0.72rem; font-weight: 800; font-family: var(--font-sanskrit-ui); text-transform: none; color: var(--saffron-royal); letter-spacing: 0.5px; display: block;">
+                ${slotInfo?.label || ''} <span style="font-family: var(--font-ui); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase;">(${slotInfo?.labelEn || ''})</span>
               </span>
-              <span style="font-family: var(--font-header); font-size: 1.25rem; font-weight: 800; color: var(--charcoal-sandal);">
+              <span style="font-family: var(--font-ui); font-size: 1.25rem; font-weight: 800; color: var(--charcoal-sandal);">
                 ${slotInfo?.time || ''}
               </span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
               <span style="font-size: 0.75rem; font-weight: 700; color: var(--sandalwood);">Roster:</span>
-              <select class="spec-filter-select form-control" style="width: 190px; padding: 0.35rem 0.65rem; font-size: 0.78rem; height: auto; background-color: white;">
+              <select class="spec-filter-select form-control" style="width: 190px; padding: 0.35rem 0.65rem; font-size: 0.78rem; height: auto; background-color: white; font-family: var(--font-sanskrit-ui);">
                 <option value="all" ${detectedType === 'All Students' ? 'selected' : ''}>All Students (सर्वे छात्राः)</option>
                 <option value="vyakarana" ${detectedType === 'Vyakarana Students' ? 'selected' : ''}>Vyakarana (व्याकरणम्)</option>
                 <option value="vedanta" ${detectedType === 'Vedanta Students' ? 'selected' : ''}>Vedanta (वेदान्तः)</option>

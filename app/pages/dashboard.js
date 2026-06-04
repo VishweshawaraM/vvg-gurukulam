@@ -173,7 +173,7 @@ export function renderDashboard(container, appInstance) {
       <div>
         <!-- Daily Shloka -->
         <div class="gurukula-card framed" style="background: linear-gradient(135deg, var(--gold-light) 0%, var(--bg-card) 60%); border-color: rgba(197, 78, 34, 0.3); text-align: center; padding: 1.5rem;">
-          <span style="font-size: 0.6rem; font-family: var(--font-header); font-weight: 900; color: var(--saffron-royal); text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 0.75rem;">॥ उपनिषद्-वाक्यम् (Today's Shloka) ॥</span>
+          <span style="font-size: 0.72rem; font-family: var(--font-sanskrit-body); font-weight: 700; color: var(--saffron-royal); letter-spacing: 0.5px; display: block; margin-bottom: 0.75rem;">॥ उपनिषद्-वाक्यम् ॥ <span style="font-family: var(--font-ui); font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase;">(Today's Shloka)</span></span>
           <p class="devanagari-display" style="font-size: 1.15rem; color: var(--charcoal-sandal); line-height: 1.7; font-weight: normal;">
             ${pickedShloka.shloka}
           </p>

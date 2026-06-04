@@ -383,7 +383,7 @@ export const app = {
         console.error(`Render Failure on page "${activeHash}":`, err);
         viewport.innerHTML = `
           <div class="gurukula-card framed" style="border-color: var(--agni-red); text-align: center; padding: 2.5rem;">
-            <h3 style="color: var(--agni-red); font-family: var(--font-header);">॥ त्रुटिः सञ्जाता ॥</h3>
+            <h3 style="color: var(--agni-red); font-family: var(--font-sanskrit);">॥ त्रुटिः सञ्जाता ॥</h3>
             <p style="margin-top: 1rem; color: var(--sandal-light); font-size: 0.9rem;">An error occurred while loading this page: ${err.message}</p>
             <button class="btn btn-saffron" style="margin-top: 1.5rem;" onclick="window.location.reload()">Reload Application</button>
           </div>
