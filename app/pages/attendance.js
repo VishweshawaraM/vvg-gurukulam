@@ -239,6 +239,7 @@ export function renderAttendance(container, appInstance) {
              <div>
               <span style="font-size: 0.72rem; font-weight: 800; font-family: var(--font-sanskrit-ui); text-transform: none; color: var(--saffron-royal); letter-spacing: 0.5px; display: block;">
                 ${slotInfo?.label || ''} <span style="font-family: var(--font-ui); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase;">(${slotInfo?.labelEn || ''})</span>
+                ${db.isClassComplete(selectedGanaId, selectedDateStr, slotId) ? '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:var(--forest-tulsi); color:white; font-size:0.55rem; font-family:var(--font-ui);">COMPLETED</span>' : '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:#e0e0e0; color:#555; font-size:0.55rem; font-family:var(--font-ui);">INCOMPLETE</span>'}
               </span>
               <span style="font-family: var(--font-ui); font-size: 1.25rem; font-weight: 800; color: var(--charcoal-sandal);">
                 ${slotInfo?.time || ''}
@@ -314,8 +315,8 @@ export function renderAttendance(container, appInstance) {
 
             <!-- Notes -->
             <div class="form-group" style="margin-bottom: 1.25rem;">
-              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Notes (What was taught today?)</label>
-              <textarea name="notes" class="form-control" rows="2" style="font-size: 0.85rem;" placeholder="e.g. Recited Rigveda Mandala 1 Sukta 2, practiced grammar rules...">${classLog.notes || ''}</textarea>
+              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Summary (What was taught today? Required) *</label>
+              <textarea name="classSummary" class="form-control" rows="3" style="font-size: 0.85rem;" placeholder="Write a brief summary (approx 3-4 sentences) describing what was taught today..." required minlength="15">${classLog.classSummary || ''}</textarea>
             </div>
 
             <!-- Footer Buttons -->
@@ -417,7 +418,7 @@ export function renderAttendance(container, appInstance) {
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const notes = form.querySelector('[name="notes"]').value;
+        const classSummary = form.querySelector('[name="classSummary"]').value.trim();
         const subject = form.querySelector('[name="subject"]').value.trim();
         const engSubject = form.querySelector('[name="engSubject"]').value.trim();
         const teacherId = form.querySelector('[name="teacherId"]').value;
@@ -440,7 +441,7 @@ export function renderAttendance(container, appInstance) {
         // Single atomic save: class log metadata merged with student statuses
         // saveClassLog stores metadata, saveAttendance stores students — both under same slot key
         db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { 
-          present, absent, notes, subject, engSubject, teacherId, teacher, teacherEn 
+          present, absent, classSummary, subject, engSubject, teacherId, teacher, teacherEn 
         });
         db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses);
         
