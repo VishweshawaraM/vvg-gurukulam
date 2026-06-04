@@ -245,12 +245,12 @@ export function renderAttendance(container, appInstance) {
               </span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--sandalwood);">Roster:</span>
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--sandalwood);">Filter Roster by Section:</span>
               <select class="spec-filter-select form-control" style="width: 190px; padding: 0.35rem 0.65rem; font-size: 0.78rem; height: auto; background-color: white; font-family: var(--font-sanskrit-ui);">
-                <option value="all" ${detectedType === 'All Students' ? 'selected' : ''}>All Students (सर्वे छात्राः)</option>
+                <option value="all" ${detectedType === 'All Students' ? 'selected' : ''}>All Sections (सर्वे)</option>
                 <option value="vyakarana" ${detectedType === 'Vyakarana Students' ? 'selected' : ''}>Vyakarana (व्याकरणम्)</option>
                 <option value="vedanta" ${detectedType === 'Vedanta Students' ? 'selected' : ''}>Vedanta (वेदान्तः)</option>
-                <option value="mimamsa" ${detectedType === 'Mimamsa/Nyaya Students' ? 'selected' : ''}>Mimamsa/Nyaya (मीमांसा)</option>
+                <option value="junior">Junior (None)</option>
               </select>
             </div>
           </div>
@@ -279,28 +279,34 @@ export function renderAttendance(container, appInstance) {
             </div>
 
             <!-- Student Checkbox Grid -->
-            <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px;">
-              छात्र-उपस्थितिः (Student Checkboxes)
+            <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+              <span>छात्र-उपस्थितिः (Student Checkboxes)</span>
+              <button type="button" class="btn btn-ghost btn-sm expand-roster-btn" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">+ Add Students from other Ganas</button>
             </div>
             <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
-              ${ganaStudents.map(s => {
-                // slotStudents is {studentId: 'Present'|'Absent'} - default to present if no record yet
+              ${db.getAllStudents().map(s => {
                 const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
+                const isCurrentGana = s.ganaId === selectedGanaId;
                 
-                // Compute displays
-                let shouldDisplay = true;
-                if (detectedType === 'Vyakarana Students') {
-                  shouldDisplay = (s.shastra || 'None') === 'Vyakarana' || (s.shastra || 'None') === 'None';
-                } else if (detectedType === 'Vedanta Students') {
-                  shouldDisplay = (s.shastra || 'None') === 'Vedanta' || (s.shastra || 'None') === 'None';
-                } else if (detectedType === 'Mimamsa/Nyaya Students') {
-                  shouldDisplay = (s.shastra || 'None') === 'Mimamsa' || (s.shastra || 'None') === 'Nyaya' || (s.shastra || 'None') === 'None';
+                let shouldDisplay = isCurrentGana;
+                if (isCurrentGana) {
+                  if (detectedType === 'Vyakarana Students') {
+                    shouldDisplay = (s.section || 'None') === 'Vyakarana' || (s.section || 'None') === 'None';
+                  } else if (detectedType === 'Vedanta Students') {
+                    shouldDisplay = (s.section || 'None') === 'Vedanta' || (s.section || 'None') === 'None';
+                  }
                 }
                 
+                const ganaObj = db.getGanaById(s.ganaId);
+                const ganaName = ganaObj ? ganaObj.name : '';
+                
                 return `
-                <label class="student-label" data-shastra="${s.shastra || 'None'}" style="display: ${shouldDisplay ? 'flex' : 'none'}; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
+                <label class="student-label" data-section="${s.section || 'None'}" data-gana="${s.ganaId}" style="display: ${shouldDisplay ? 'flex' : 'none'}; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
                   <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
-                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
+                  <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
+                    ${!isCurrentGana ? `<span style="font-size: 0.6rem; color: var(--saffron-royal);">${ganaName}</span>` : ''}
+                  </div>
                 </label>
                 `;
               }).join('')}
@@ -342,18 +348,63 @@ export function renderAttendance(container, appInstance) {
       specSelect.addEventListener('change', (e) => {
         const val = e.target.value;
         form.querySelectorAll('.student-label').forEach(label => {
-          const shastra = label.getAttribute('data-shastra');
+          const section = label.getAttribute('data-section');
+          const isGanaMatch = label.getAttribute('data-gana') === selectedGanaId || label.classList.contains('expanded-visible');
+          
+          if (!isGanaMatch) {
+             label.style.display = 'none';
+             return;
+          }
+          
           if (val === 'all') {
             label.style.display = 'flex';
           } else if (val === 'vyakarana') {
-            label.style.display = (shastra === 'Vyakarana' || shastra === 'None') ? 'flex' : 'none';
+            label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
           } else if (val === 'vedanta') {
-            label.style.display = (shastra === 'Vedanta' || shastra === 'None') ? 'flex' : 'none';
-          } else if (val === 'mimamsa') {
-            label.style.display = (shastra === 'Mimamsa' || shastra === 'Nyaya' || shastra === 'None') ? 'flex' : 'none';
+            label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
+          } else if (val === 'junior') {
+            label.style.display = (section === 'None') ? 'flex' : 'none';
           }
         });
       });
+      
+      const expandBtn = form.querySelector('.expand-roster-btn');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', () => {
+          const isExpanded = expandBtn.classList.contains('expanded');
+          const currentFilter = specSelect.value;
+          
+          if (isExpanded) {
+            expandBtn.classList.remove('expanded');
+            expandBtn.innerText = '+ Add Students from other Ganas';
+            form.querySelectorAll('.student-label').forEach(label => {
+              label.classList.remove('expanded-visible');
+              const section = label.getAttribute('data-section');
+              const isCurrentGana = label.getAttribute('data-gana') === selectedGanaId;
+              
+              if (!isCurrentGana) {
+                 label.style.display = 'none';
+              } else {
+                 if (currentFilter === 'all') label.style.display = 'flex';
+                 else if (currentFilter === 'vyakarana') label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
+                 else if (currentFilter === 'vedanta') label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
+                 else if (currentFilter === 'junior') label.style.display = (section === 'None') ? 'flex' : 'none';
+              }
+            });
+          } else {
+            expandBtn.classList.add('expanded');
+            expandBtn.innerText = '- Hide other Ganas';
+            form.querySelectorAll('.student-label').forEach(label => {
+              label.classList.add('expanded-visible');
+              const section = label.getAttribute('data-section');
+              if (currentFilter === 'all') label.style.display = 'flex';
+              else if (currentFilter === 'vyakarana') label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
+              else if (currentFilter === 'vedanta') label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
+              else if (currentFilter === 'junior') label.style.display = (section === 'None') ? 'flex' : 'none';
+            });
+          }
+        });
+      }
 
       // Toggle All button
       form.querySelector('.mark-all-btn').addEventListener('click', () => {

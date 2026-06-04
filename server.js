@@ -148,7 +148,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/version ─────────────────────
   if (req.method === 'GET' && parsedUrl === '/api/version') {
-    return jsonRes(res, 200, { version: '3.5.0', deployed: '2026-06-04', fixes: ['attendance-key-order', 'unicode-devanagari-fonts'] });
+    return jsonRes(res, 200, { version: '3.7.0', deployed: '2026-06-04', fixes: ['flexible-attendance', 'sections-support'] });
   }
 
   // ── POST /api/auth/login ─────────────────

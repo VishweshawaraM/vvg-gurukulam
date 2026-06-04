@@ -20,7 +20,7 @@ export function renderStudents(container, appInstance) {
     const filteredStudents = students.filter(s => {
       const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.sanskritName.includes(searchTerm) || 
-                          (s.veda && s.veda.toLowerCase().includes(searchTerm.toLowerCase())) || (s.shastra && s.shastra.toLowerCase().includes(searchTerm.toLowerCase()));
+                          (s.veda && s.veda.toLowerCase().includes(searchTerm.toLowerCase())) || (s.section && s.section.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchGana = selectedGana === 'all' || s.ganaId === selectedGana;
       return matchSearch && matchGana;
     });
@@ -45,7 +45,7 @@ export function renderStudents(container, appInstance) {
                 </div>
               </td>
               <td><span class="badge badge-saffron">${ganaName}</span></td>
-              <td><span style="font-weight: 700; color: var(--gold-leaf);">${s.shastra && s.shastra !== 'None' ? s.shastra : 'None (Junior)'}</span></td>
+              <td><span style="font-weight: 700; color: var(--gold-leaf);">${s.section && s.section !== 'None' ? s.section : 'None (Junior)'}</span></td>
               <td>${s.veda || 'None'}</td>
               ${!isReadOnly ? `
                 <td>
@@ -296,7 +296,7 @@ export function renderStudents(container, appInstance) {
           
           <div class="student-info-item">
             <span class="student-info-label">विभागः (Vibhāgaḥ)</span>
-            <span class="student-info-value" style="font-weight: 700; color: var(--gold-leaf);">${student.shastra && student.shastra !== 'None' ? student.shastra : 'None (Junior)'}</span>
+            <span class="student-info-value" style="font-weight: 700; color: var(--gold-leaf);">${student.section && student.section !== 'None' ? student.section : 'None (Junior)'}</span>
           </div>
           
           <div class="student-info-item">
@@ -381,14 +381,11 @@ export function renderStudents(container, appInstance) {
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label"><span>विभागः (Vibhāgaḥ / Department) *</span></label>
-              <select id="add-shastra" class="form-control" required>
+              <label class="form-label"><span>विभागः (Section) *</span></label>
+              <select id="add-section" class="form-control" required>
                 <option value="None" selected>None (Junior)</option>
                 <option value="Vyakarana">Vyakarana</option>
                 <option value="Vedanta">Vedanta</option>
-                <option value="Mimamsa">Mimamsa</option>
-                <option value="Nyaya">Nyaya</option>
-                <option value="Jyotisha">Jyotisha</option>
               </select>
             </div>
           </div>
@@ -410,7 +407,7 @@ export function renderStudents(container, appInstance) {
       const newStudent = {
         name: drawer.querySelector('#add-name').value,
         ganaId: drawer.querySelector('#add-gana').value,
-        veda: drawer.querySelector('#add-veda').value, shastra: drawer.querySelector('#add-shastra').value,
+        veda: drawer.querySelector('#add-veda').value, section: drawer.querySelector('#add-section').value,
         sanskritName: '', dob: '', joiningDate: new Date().toISOString().split('T')[0],
         parentName: '', parentContact: '', address: '', notes: ''
       };
@@ -478,14 +475,11 @@ export function renderStudents(container, appInstance) {
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label"><span>विभागः (Vibhāgaḥ / Department) *</span></label>
-                <select id="edit-shastra" class="form-control" required>
-                  <option value="None" ${student.shastra === 'None' ? 'selected' : ''}>None (Junior)</option>
-                  <option value="Vyakarana" ${student.shastra === 'Vyakarana' ? 'selected' : ''}>Vyakarana</option>
-                  <option value="Vedanta" ${student.shastra === 'Vedanta' ? 'selected' : ''}>Vedanta</option>
-                  <option value="Mimamsa" ${student.shastra === 'Mimamsa' ? 'selected' : ''}>Mimamsa</option>
-                  <option value="Nyaya" ${student.shastra === 'Nyaya' ? 'selected' : ''}>Nyaya</option>
-                  <option value="Jyotisha" ${student.shastra === 'Jyotisha' ? 'selected' : ''}>Jyotisha</option>
+                <label class="form-label"><span>विभागः (Section) *</span></label>
+                <select id="edit-section" class="form-control" required>
+                  <option value="None" ${student.section === 'None' ? 'selected' : ''}>None (Junior)</option>
+                  <option value="Vyakarana" ${student.section === 'Vyakarana' ? 'selected' : ''}>Vyakarana</option>
+                  <option value="Vedanta" ${student.section === 'Vedanta' ? 'selected' : ''}>Vedanta</option>
                 </select>
               </div>
             </div>
@@ -530,7 +524,7 @@ export function renderStudents(container, appInstance) {
         dob: drawer.querySelector('#edit-dob').value,
         joiningDate: drawer.querySelector('#edit-joining-date').value,
         ganaId: drawer.querySelector('#edit-gana').value,
-        veda: drawer.querySelector('#edit-veda').value, shastra: drawer.querySelector('#edit-shastra').value,
+        veda: drawer.querySelector('#edit-veda').value, section: drawer.querySelector('#edit-section').value,
         parentName: drawer.querySelector('#edit-parent-name').value,
         parentContact: drawer.querySelector('#edit-parent-contact').value,
         address: drawer.querySelector('#edit-address').value,
