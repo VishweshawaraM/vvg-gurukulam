@@ -4,8 +4,8 @@
   Full CRUD · Real Photo Upload · Premium Cards · Culturally Rooted
 */
 
-import { db }     from '../database.js?v=2.5';
-import { router } from '../router.js?v=2.5';
+import { db }     from '../database.js?v=3.5';
+import { router } from '../router.js?v=3.5';
 
 export function renderAcharyas(container, appInstance) {
   const user    = router.getUserSession();

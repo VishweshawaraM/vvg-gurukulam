@@ -3,9 +3,9 @@
   Dashboard Page — Ultra-Premium Cinematic Layout v2.1
 */
 
-import { db } from '../database.js?v=2.5';
-import { router } from '../router.js?v=2.5';
-import { getVaidikaPanchangam } from '../app.js?v=2.5';
+import { db } from '../database.js?v=3.5';
+import { router } from '../router.js?v=3.5';
+import { getVaidikaPanchangam } from '../app.js?v=3.5';
 
 export function renderDashboard(container, appInstance) {
   const students = db.getAllStudents();

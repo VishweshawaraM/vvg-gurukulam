@@ -5,7 +5,7 @@
 */
 
 const DB_KEY     = 'vvg_database';
-const DB_VERSION = '3.4.0'; // Slot-based attendance and Veda/Shastra split
+const DB_VERSION = '3.5.0'; // Unified attendanceLog[date][gana][slot] canonical structure
 
 export const db = {
   get() {
@@ -604,40 +604,59 @@ export const db = {
   },
 
   // â”€â”€â”€ Attendance â”€â”€â”€
+  // Returns class log metadata (subject, teacher, notes, etc.) for a slot
+  // Canonical structure: attendanceLog[dateStr][ganaId][slotId] = { subject, teacher, students:{} }
   getClassLog(ganaId, dateStr, slotId) {
     const data = this.get();
-    return data.attendanceLog?.[ganaId]?.[dateStr]?.[slotId] || null;
+    const slotEntry = data.attendanceLog?.[dateStr]?.[ganaId]?.[slotId];
+    if (!slotEntry) return null;
+    // Return only the metadata fields (not students)
+    const { students, ...meta } = slotEntry;
+    return Object.keys(meta).length > 0 ? meta : null;
   },
 
   saveClassLog(ganaId, dateStr, slotId, logData) {
     const data = this.get();
     if (!data.attendanceLog) data.attendanceLog = {};
-    if (!data.attendanceLog[ganaId]) data.attendanceLog[ganaId] = {};
-    if (!data.attendanceLog[ganaId][dateStr]) data.attendanceLog[ganaId][dateStr] = {};
-    data.attendanceLog[ganaId][dateStr][slotId] = logData;
+    if (!data.attendanceLog[dateStr]) data.attendanceLog[dateStr] = {};
+    if (!data.attendanceLog[dateStr][ganaId]) data.attendanceLog[dateStr][ganaId] = {};
+    if (!data.attendanceLog[dateStr][ganaId][slotId]) data.attendanceLog[dateStr][ganaId][slotId] = {};
+    // Merge metadata, preserve existing students
+    const existing = data.attendanceLog[dateStr][ganaId][slotId];
+    data.attendanceLog[dateStr][ganaId][slotId] = { ...existing, ...logData };
     this.save(data);
   },
 
+  // getAttendance: returns student statuses for a slot (or full gana day log)
+  // Structure: attendanceLog[dateStr][ganaId][slotId].students = {studentId: 'Present'|'Absent'}
   getAttendance(ganaId, dateStr, slotId = null) {
     const data = this.get();
-    const dayLog = (data.attendanceLog[dateStr] && data.attendanceLog[dateStr][ganaId]) || null;
+    const dayLog = data.attendanceLog?.[dateStr]?.[ganaId] || null;
     if (!dayLog) return null;
     if (slotId) {
-      if (dayLog[slotId]) return dayLog[slotId];
-      // Backward compatibility: if it doesn't contain slotId but has student IDs directly
-      // (meaning it's the old/seeded format), we return the dayLog itself so log[s.id] works.
-      const hasSlotKeys = Object.keys(dayLog).some(k => k.startsWith('slot_'));
-      if (!hasSlotKeys) return dayLog;
+      const slotEntry = dayLog[slotId];
+      if (!slotEntry) return null;
+      // Return students object if it exists, else return slotEntry itself (backward compat)
+      if (slotEntry.students && typeof slotEntry.students === 'object') {
+        return slotEntry.students;
+      }
+      // Backward compat: slotEntry itself might be a direct {studentId: status} map
+      const hasStudentKeys = Object.keys(slotEntry).some(k => k.startsWith('std_'));
+      if (hasStudentKeys) return slotEntry;
       return null;
     }
+    // No slotId: return full gana day log
     return dayLog;
   },
   
   saveAttendance(ganaId, dateStr, slotId, studentStatuses) {
     const data = this.get();
+    if (!data.attendanceLog) data.attendanceLog = {};
     if (!data.attendanceLog[dateStr]) data.attendanceLog[dateStr] = {};
     if (!data.attendanceLog[dateStr][ganaId]) data.attendanceLog[dateStr][ganaId] = {};
-    data.attendanceLog[dateStr][ganaId][slotId] = studentStatuses;
+    if (!data.attendanceLog[dateStr][ganaId][slotId]) data.attendanceLog[dateStr][ganaId][slotId] = {};
+    // Store students under a 'students' key so metadata and statuses coexist
+    data.attendanceLog[dateStr][ganaId][slotId].students = studentStatuses;
     
     data.students.forEach(student => {
       if (student.ganaId === ganaId && studentStatuses[student.id]) {
@@ -647,7 +666,7 @@ export const db = {
     });
     this.save(data);
     const gana = data.ganas.find(g => g.id === ganaId);
-    this.addActivity(`Attendance updated for ${gana ? gana.name : ganaId} on ${dateStr}`, 'tulsi');
+    this.addActivity(`Attendance saved for ${gana ? gana.name : ganaId} on ${dateStr}`, 'tulsi');
     return true;
   },
   
@@ -663,15 +682,13 @@ export const db = {
       let present = 0, total = ganaStudents.length;
       ganaStudents.forEach(s => { 
         let wasPresent = false;
-        if (dayLog[s.id] === 'Present') {
-          wasPresent = true;
-        } else {
-          Object.values(dayLog).forEach(slotLog => {
-            if (slotLog && typeof slotLog === 'object' && slotLog[s.id] === 'Present') {
-              wasPresent = true;
-            }
-          });
-        }
+        // New canonical format: slot.students[sid]
+        Object.values(dayLog).forEach(slotEntry => {
+          if (slotEntry && typeof slotEntry === 'object') {
+            const students = slotEntry.students || slotEntry;
+            if (students[s.id] === 'Present') wasPresent = true;
+          }
+        });
         if (wasPresent) present++;
       });
       stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });

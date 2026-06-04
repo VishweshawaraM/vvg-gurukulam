@@ -4,8 +4,8 @@
   Full 8 Gana Support | Card Grid UI | Analytics | CSV Export
 */
 
-import { db } from '../database.js?v=2.5';
-import { router } from '../router.js?v=2.5';
+import { db } from '../database.js?v=3.5';
+import { router } from '../router.js?v=3.5';
 
 export function renderAttendance(container, appInstance) {
   const ganas = db.getAllGanas();
@@ -208,8 +208,10 @@ export function renderAttendance(container, appInstance) {
     Object.keys(slots).forEach(slotId => {
       const slotInfo = slots[slotId];
       const timetableDetails = dailyTimetable[slotId] || {};
+      // getClassLog returns metadata fields (no students)
       const classLog = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || {};
-      const attendanceLog = db.getAttendance(selectedGanaId, selectedDateStr) || {};
+      // getAttendance with slotId returns the students object directly
+      const slotStudents = db.getAttendance(selectedGanaId, selectedDateStr, slotId) || {};
 
       // Merge timetable details with dynamic slot logs if saved on this date
       const subject = classLog.subject || timetableDetails.subject || '';
@@ -282,7 +284,8 @@ export function renderAttendance(container, appInstance) {
             </div>
             <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
               ${ganaStudents.map(s => {
-                const isPresent = !attendanceLog[slotId] || attendanceLog[slotId][s.id] !== 'Absent';
+                // slotStudents is {studentId: 'Present'|'Absent'} - default to present if no record yet
+                const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
                 
                 // Compute displays
                 let shouldDisplay = true;
@@ -383,15 +386,18 @@ export function renderAttendance(container, appInstance) {
         const present = Object.values(studentStatuses).filter(v => v === 'Present').length;
         const absent = Object.values(studentStatuses).filter(v => v === 'Absent').length;
 
+        // Single atomic save: class log metadata merged with student statuses
+        // saveClassLog stores metadata, saveAttendance stores students — both under same slot key
         db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { 
           present, absent, notes, subject, engSubject, teacherId, teacher, teacherEn 
         });
         db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses);
         
+        // Reload the slot view so checkboxes reflect actual saved state
         const ind = form.querySelector('.save-indicator');
         ind.style.display = 'inline-flex';
-        setTimeout(() => ind.style.display = 'none', 2000);
-        showToast(`Saved attendance for: ${subject || 'Open Class'}`, 'success');
+        setTimeout(() => { ind.style.display = 'none'; loadSubView(); }, 1200);
+        showToast(`✔ Attendance saved: ${subject || 'Open Class'} (${present} Present, ${absent} Absent)`, 'success');
       });
     });
 
@@ -566,24 +572,23 @@ export function renderAttendance(container, appInstance) {
         </div>
         ${(() => {
           // Find students absent 2+ days in a week
+          // dayLog = { slotId: { subject, students: {sid: 'Present'|'Absent'} } }
           const alertStudents = ganaStudents.filter(s => {
             let absentDays = 0;
             weekStats.forEach(stat => {
               const dayLog = db.getAttendance(selectedGanaId, stat.date);
               let wasAbsent = false;
               let hasData = false;
-              if (dayLog) {
-                  if (dayLog[s.id]) {
-                      hasData = true;
-                      if (dayLog[s.id] === 'Absent') wasAbsent = true;
-                  } else {
-                      Object.values(dayLog).forEach(slotLog => {
-                          if (slotLog && typeof slotLog === 'object' && slotLog[s.id]) {
-                              hasData = true;
-                              if (slotLog[s.id] === 'Absent') wasAbsent = true;
-                          }
-                      });
+              if (dayLog && typeof dayLog === 'object') {
+                Object.values(dayLog).forEach(slotEntry => {
+                  if (!slotEntry || typeof slotEntry !== 'object') return;
+                  // New format: slotEntry.students = { sid: status }
+                  const students = slotEntry.students || slotEntry;
+                  if (students[s.id]) {
+                    hasData = true;
+                    if (students[s.id] === 'Absent') wasAbsent = true;
                   }
+                });
               }
               if (hasData && wasAbsent) absentDays++;
             });

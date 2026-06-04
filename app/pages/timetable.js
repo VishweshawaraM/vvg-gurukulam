@@ -4,8 +4,8 @@
   Real Schedule | All 8 Ganas | Live Slot Indicator | Print-Ready
 */
 
-import { db } from '../database.js?v=2.5';
-import { router } from '../router.js?v=2.5';
+import { db } from '../database.js?v=3.5';
+import { router } from '../router.js?v=3.5';
 
 export function renderTimetable(container, appInstance) {
   const user = router.getUserSession();
