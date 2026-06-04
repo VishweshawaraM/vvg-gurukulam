@@ -1,6 +1,7 @@
 /**
  * Veda Vijnana Gurukulam Management System
- * Production Server v3.0 — Real Backend with File-Based Persistence
+ * Production Server v3.5.0 — Attendance Fix + Unicode Devanagari Fonts
+ * Deployed: 2026-06-04
  * 
  * Endpoints:
  *   POST /api/auth/login  — Real Acharya authentication
@@ -144,6 +145,11 @@ const server = http.createServer(async (req, res) => {
   // ══════════════════════════════════════════
   //  API ROUTES
   // ══════════════════════════════════════════
+
+  // ── GET /api/version ─────────────────────
+  if (req.method === 'GET' && parsedUrl === '/api/version') {
+    return jsonRes(res, 200, { version: '3.5.0', deployed: '2026-06-04', fixes: ['attendance-key-order', 'unicode-devanagari-fonts'] });
+  }
 
   // ── POST /api/auth/login ─────────────────
   if (req.method === 'POST' && parsedUrl === '/api/auth/login') {
