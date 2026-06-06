@@ -36,22 +36,25 @@ export const db = {
 
   // ─── Server Sync (fire-and-forget) ───────────────────────────────────
   _pushToServer(data) {
+    const token = sessionStorage.getItem('vvg_token') || '';
     fetch('/api/db', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
       body: JSON.stringify(data)
     }).catch(() => { /* offline — data is safe in localStorage */ });
   },
 
   async syncFromServer() {
     try {
-      const res = await fetch('/api/db');
+      const token = sessionStorage.getItem('vvg_token') || '';
+      const headers = { 'X-Session-Token': token };
+      const res = await fetch('/api/db', { headers });
       let serverData = null;
       if (res.status !== 204 && res.ok) {
         serverData = await res.json();
       }
       
-      const usersRes = await fetch('/api/users');
+      const usersRes = await fetch('/api/users', { headers });
       if (usersRes.ok) {
         const users = await usersRes.json();
         if (!serverData) serverData = this.get();

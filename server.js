@@ -263,7 +263,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/users — list acharyas ───────
   if (req.method === 'GET' && parsedUrl === '/api/users') {
-    if (!requireAdmin(req, res)) return;
+    if (!requireAuth(req, res)) return;
     const publicUsers = USERS.filter(u => u).map(u => ({
       id: u.id, name: u.name, nameSa: u.nameSa,
       email: u.email, role: u.role, ganaId: u.ganaId
