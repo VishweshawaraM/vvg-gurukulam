@@ -117,6 +117,8 @@ export function renderAcharyas(container, appInstance) {
         <!-- Info -->
         <div class="acp-body">
           <h3 class="acp-name">${a.name}</h3>
+          ${a.role === 'Pracharya' ? '<span style="background:var(--gold-primary);color:var(--text-dark);padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;margin-bottom:4px;display:inline-block;">Pracharya (Principal)</span>' : ''}
+          ${a.role === 'Admin' ? '<span style="background:var(--saffron-royal);color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;margin-bottom:4px;display:inline-block;">System Admin</span>' : ''}
           <p class="acp-name-sa devanagari-body">${a.sanskritName}</p>
 
           <div class="acp-spec">

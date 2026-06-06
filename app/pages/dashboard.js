@@ -17,6 +17,7 @@ export function renderDashboard(container, appInstance) {
   const user = router.getUserSession();
   const isStaffOrAdmin = user && ['Admin', 'Office Staff'].includes(user.role);
   const pendingUsers = (db.get().users || []).filter(u => u && u.role === 'Pending');
+  const activeUsers = (db.get().users || []).filter(u => u && u.role !== 'Pending');
 
   // Stats
   const todayStr = new Date().toISOString().split('T')[0];
@@ -284,6 +285,36 @@ export function renderDashboard(container, appInstance) {
           </div>
         </div>
         ` : ''}
+
+        <!-- Manage User Roles Widget -->
+        ${user && user.role === 'Admin' ? `
+        <div class="gurukula-card" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <h3 class="card-title">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>अधिकार-निर्वहणम् (Manage User Roles)</span>
+            </h3>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            ${activeUsers.map(u => `
+              <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 0.8rem; background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                <div>
+                  <span style="font-weight: 700; color: var(--saffron-royal); display: block;">${u.name}</span>
+                  <span style="font-size: 0.8rem; color: var(--charcoal-sandal);">${u.email}</span>
+                </div>
+                <div>
+                  <select class="form-select role-select" data-id="${u.id}" style="font-size: 0.8rem; padding: 4px 8px; border-color: var(--gold-dark); border-radius: var(--radius-sm);">
+                    <option value="Acharya" ${u.role === 'Acharya' ? 'selected' : ''}>Acharya</option>
+                    <option value="Pracharya" ${u.role === 'Pracharya' ? 'selected' : ''}>Pracharya (Principal)</option>
+                    <option value="Office Staff" ${u.role === 'Office Staff' ? 'selected' : ''}>Office Staff</option>
+                    <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                  </select>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
       </div>
 
       <!-- Right Column -->
@@ -482,5 +513,28 @@ export function renderDashboard(container, appInstance) {
 
   container.querySelectorAll('.gana-mini-card').forEach(card => {
     card.addEventListener('click', () => router.navigate('ganas'));
+  });
+
+  // Role Management Event Listeners
+  container.querySelectorAll('.role-select').forEach(select => {
+    select.addEventListener('change', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      const newRole = e.target.value;
+      const originalRole = select.querySelector('option[selected]')?.value || 'Acharya';
+      
+      if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
+        e.target.value = originalRole; // revert selection
+        return;
+      }
+      
+      const success = await db.changeUserRole(id, newRole);
+      if (success) {
+        alert(`Role successfully updated to ${newRole}.`);
+        renderDashboard(container, appInstance); // refresh
+      } else {
+        alert('Failed to update role. Please ensure you have Admin privileges.');
+        e.target.value = originalRole;
+      }
+    });
   });
 }

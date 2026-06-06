@@ -15,6 +15,7 @@
   "author": "Veda Vijnana Gurukulam",
   "license": "ISC",
   "dependencies": {
-    "nodemailer": "^8.0.10"
+    "nodemailer": "^8.0.10",
+    "pptxgenjs": "^4.0.1"
   }
 }

@@ -886,6 +886,20 @@ export const db = {
     }
     const csvLines = [headers.join(','), ...rows.map(r => r.join(','))];
     return csvLines.join('\n');
+  },
+
+  async changeUserRole(id, role) {
+    const token = sessionStorage.getItem('vvg_token') || '';
+    const res = await fetch('/api/users/role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Token': token },
+      body: JSON.stringify({ id, role })
+    });
+    if (res.ok) {
+      await this.syncFromServer();
+      return true;
+    }
+    return false;
   }
 };
 

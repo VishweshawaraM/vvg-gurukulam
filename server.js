@@ -379,6 +379,32 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ── POST /api/users/role ──────────────
+  if (req.method === 'POST' && parsedUrl.match(/^\/api\/users\/role\/?$/)) {
+    if (!requireAdmin(req, res)) return;
+    try {
+      const body = await parseBody(req);
+      const { id, role } = body;
+      if (!['Admin', 'Pracharya', 'Acharya', 'Office Staff'].includes(role)) {
+        return jsonRes(res, 400, { success: false, message: 'Invalid role provided' });
+      }
+
+      const userIndex = USERS.findIndex(u => u && u.id === id);
+      if (userIndex === -1) return jsonRes(res, 404, { success: false, message: 'User not found' });
+      
+      USERS[userIndex].role = role;
+      
+      await fetch(`${FIREBASE}/users.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(USERS)
+      });
+      return jsonRes(res, 200, { success: true, message: `Role updated to ${role}` });
+    } catch(e) {
+      return jsonRes(res, 500, { success: false, error: e.message });
+    }
+  }
+
   // ── GET /api/ping — health check ─────────
   if (req.method === 'GET' && parsedUrl === '/api/ping') {
     return jsonRes(res, 200, { status: 'ok', server: 'VVG Edu-Sys v3.0', time: new Date().toISOString() });
