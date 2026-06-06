@@ -21,8 +21,8 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'vvgurukulam.system@gmail.com',
-    pass: process.env.EMAIL_PASS || 'dummy-app-password-123'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
@@ -130,6 +130,27 @@ function serveFile(filePath, res) {
   });
 }
 
+// ── Helper: Authentication ────────────────────────────────
+function requireAuth(req, res) {
+  const token = req.headers['x-session-token'];
+  const user = SESSIONS[token];
+  if (!user) {
+    jsonRes(res, 401, { success: false, message: 'Unauthorized' });
+    return null;
+  }
+  return user;
+}
+
+function requireAdmin(req, res) {
+  const user = requireAuth(req, res);
+  if (!user) return null;
+  if (user.role !== 'Admin') {
+    jsonRes(res, 403, { success: false, message: 'Forbidden: Admin access required' });
+    return null;
+  }
+  return user;
+}
+
 // ── Main server ───────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   // CORS preflight
@@ -223,6 +244,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── POST /api/db — save database ─────────
   if (req.method === 'POST' && parsedUrl === '/api/db') {
+    if (!requireAuth(req, res)) return;
     try {
       const body = await parseBody(req);
       if (body && body.students) {
@@ -241,6 +263,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/users — list acharyas ───────
   if (req.method === 'GET' && parsedUrl === '/api/users') {
+    if (!requireAdmin(req, res)) return;
     const publicUsers = USERS.filter(u => u).map(u => ({
       id: u.id, name: u.name, nameSa: u.nameSa,
       email: u.email, role: u.role, ganaId: u.ganaId
@@ -308,6 +331,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── POST /api/users/approve ──────────────
   if (req.method === 'POST' && parsedUrl.match(/^\/api\/users\/approve\/?$/)) {
+    if (!requireAdmin(req, res)) return;
     try {
       const body = await parseBody(req);
       const { id } = body;
@@ -338,6 +362,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── POST /api/users/reject ──────────────
   if (req.method === 'POST' && parsedUrl.match(/^\/api\/users\/reject\/?$/)) {
+    if (!requireAdmin(req, res)) return;
     try {
       const body = await parseBody(req);
       const { id } = body;
@@ -366,8 +391,8 @@ const server = http.createServer(async (req, res) => {
   let filePath = path.join(__dirname, parsedUrl === '/' ? 'index.html' : parsedUrl);
 
   // Security: prevent directory traversal
-  const relative = path.relative(__dirname, filePath);
-  if (relative.startsWith('..') && !path.isAbsolute(relative)) {
+  const safePath = path.normalize(filePath);
+  if (!safePath.startsWith(__dirname)) {
     res.statusCode = 403; res.end('Forbidden'); return;
   }
 
