@@ -24,3 +24,12 @@ pnpm-debug.log*
 tmp/
 temp/
 scratch/
+data/
+
+# Node packages
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local

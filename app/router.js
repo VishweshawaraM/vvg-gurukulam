@@ -12,7 +12,8 @@ const routes = {
   'timetable':     { title: 'समयसारिणी (Timetable)',           role: ['Admin', 'Office Staff', 'Acharya'] },
   'acharyas':      { title: 'आचार्याः (Acharya Profiles)',     role: ['Admin', 'Office Staff', 'Acharya'] },
   'announcements': { title: 'सूचनाकेन्द्रम् (Announcements)',  role: ['Admin', 'Office Staff', 'Acharya'] },
-  'documents':     { title: 'लेख्याधारः (Documents)',          role: ['Admin', 'Office Staff'] }
+  'documents':     { title: 'लेख्याधारः (Documents)',          role: ['Admin', 'Office Staff'] },
+  'profile':       { title: 'मम विवरणम् (Profile)',           role: ['Admin', 'Office Staff', 'Acharya'] }
 };
 
 export const router = {

@@ -15,6 +15,7 @@ const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+require('dotenv').config();
 
 // ── Email Transporter Setup ────────
 // NOTE: For real deployment, replace with real Gmail credentials
@@ -25,6 +26,27 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS
   }
 });
+
+async function sendNotificationEmail(to, subject, html) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('\n[MAILER SIMULATION] Email variables not set.');
+    console.log('To:', to);
+    console.log('Subject:', subject);
+    console.log('Body:', html, '\n');
+    return;
+  }
+  try {
+    await transporter.sendMail({
+      from: `"VVG Admin" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html
+    });
+    console.log(`[MAILER] Sent email to ${to}`);
+  } catch(e) {
+    console.error(`[MAILER] Error sending email to ${to}:`, e.message);
+  }
+}
 
 const PORT     = process.env.PORT || 3000;
 const FIREBASE = 'https://vvg-edu-sys-default-rtdb.firebaseio.com';
@@ -59,17 +81,122 @@ if (typeof global.fetch !== 'function') {
   };
 }
 
-// ── Load Acharya / User credentials from Firebase ────────
+// ── Load / Save Users and Sync with Local Fallback ────────
 let USERS = [];
-fetch(`${FIREBASE}/users.json`)
-  .then(res => res.json())
-  .then(data => {
-    if (data && Array.isArray(data)) {
-      USERS = data;
-      console.log(`[VVG] Loaded ${USERS.length} user accounts from Firebase.`);
+
+async function loadUsers() {
+  // 1. Try to load from Firebase
+  try {
+    const res = await fetch(`${FIREBASE}/users.json`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data)) {
+        USERS = data;
+        console.log(`[VVG] Loaded ${USERS.length} user accounts from Firebase.`);
+        return;
+      }
     }
-  })
-  .catch(e => console.warn('[VVG] Could not load users from Firebase', e));
+  } catch (e) {
+    console.warn('[VVG] Could not load users from Firebase, using local fallback:', e.message);
+  }
+
+  // 2. Fallback to local data/users.json
+  try {
+    const usersPath = path.join(__dirname, 'data', 'users.json');
+    if (fs.existsSync(usersPath)) {
+      USERS = JSON.parse(fs.readFileSync(usersPath, 'utf-8'));
+      console.log(`[VVG] Loaded ${USERS.length} user accounts from local fallback.`);
+    }
+  } catch (e) {
+    console.error('[VVG] Failed to load local users fallback:', e.message);
+  }
+}
+
+async function saveUsers() {
+  // 1. Save to Firebase
+  try {
+    await fetch(`${FIREBASE}/users.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(USERS)
+    });
+    console.log('[VVG] Saved users to Firebase.');
+  } catch (e) {
+    console.error('[VVG] Error saving users to Firebase:', e.message);
+  }
+
+  // 2. Save to local data/users.json
+  try {
+    const usersPath = path.join(__dirname, 'data', 'users.json');
+    const dir = path.dirname(usersPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(usersPath, JSON.stringify(USERS, null, 2), 'utf-8');
+    console.log('[VVG] Saved users locally.');
+  } catch (e) {
+    console.error('[VVG] Error saving users locally:', e.message);
+  }
+}
+
+// ── Password Hashing Utility (PBKDF2 with SHA-512) ────────
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return `pbkdf2$100000$${salt}$${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !storedHash.startsWith('pbkdf2$')) {
+    // Plaintext fallback (for backward compatibility / auto-upgrade)
+    return password === storedHash;
+  }
+  try {
+    const parts = storedHash.split('$');
+    if (parts.length !== 4) return false;
+    const [_, iterationsStr, salt, hash] = parts;
+    const iterations = parseInt(iterationsStr, 10);
+    const verifyHash = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha512').toString('hex');
+    return verifyHash === hash;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ── Rate Limiting / Brute-force Prevention ────────
+const LOGIN_ATTEMPTS = {};
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
+
+function isLockedOut(email) {
+  const record = LOGIN_ATTEMPTS[email];
+  if (!record) return false;
+  if (record.attempts >= MAX_ATTEMPTS) {
+    const elapsed = Date.now() - record.lastAttempt;
+    if (elapsed < LOCKOUT_TIME) {
+      return true;
+    } else {
+      delete LOGIN_ATTEMPTS[email];
+      return false;
+    }
+  }
+  return false;
+}
+
+function recordFailedAttempt(email) {
+  if (!LOGIN_ATTEMPTS[email]) {
+    LOGIN_ATTEMPTS[email] = { attempts: 0, lastAttempt: 0 };
+  }
+  LOGIN_ATTEMPTS[email].attempts++;
+  LOGIN_ATTEMPTS[email].lastAttempt = Date.now();
+}
+
+function resetFailedAttempts(email) {
+  delete LOGIN_ATTEMPTS[email];
+}
+
+// Initial user loading
+loadUsers();
 
 
 // ── In-memory session store ───────────────────────────────
@@ -153,6 +280,19 @@ function requireAdmin(req, res) {
 
 // ── Main server ───────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data:; " +
+    "connect-src 'self';"
+  );
+
   // CORS preflight
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
@@ -176,6 +316,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && parsedUrl === '/api/auth/login') {
     const body = await parseBody(req);
     const { email, password } = body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
+    // Check brute-force lockout
+    if (isLockedOut(normalizedEmail)) {
+      const remainingTime = Math.ceil((LOCKOUT_TIME - (Date.now() - LOGIN_ATTEMPTS[normalizedEmail].lastAttempt)) / 1000 / 60);
+      return jsonRes(res, 429, { success: false, message: `Too many failed login attempts. Please try again in ${remainingTime} minutes.` });
+    }
 
     try {
       const fbUsers = await fetch(`${FIREBASE}/users.json`).then(r => r.json());
@@ -183,17 +330,26 @@ const server = http.createServer(async (req, res) => {
     } catch(e) {}
 
     const user = USERS.find(u =>
-      u && u.email.toLowerCase() === (email || '').toLowerCase() &&
-      u.password === password
+      u && u.email.toLowerCase() === normalizedEmail
     );
 
-    if (!user) {
+    if (!user || !verifyPassword(password, user.password)) {
+      recordFailedAttempt(normalizedEmail);
       return jsonRes(res, 401, { success: false, message: 'Invalid email or password. Please check your credentials.' });
     }
 
     // Check if account is pending approval
     if (user.role === 'Pending') {
       return jsonRes(res, 403, { success: false, message: 'Your registration is pending Admin approval. Please contact the Gurukula office to activate your account.' });
+    }
+
+    // Reset lockout counters on success
+    resetFailedAttempts(normalizedEmail);
+
+    // Auto-upgrade password hash if it is currently plaintext
+    if (!user.password.startsWith('pbkdf2$')) {
+      user.password = hashPassword(password);
+      await saveUsers();
     }
 
     // Generate session token
@@ -224,6 +380,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── GET /api/db — load database ──────────
   if (req.method === 'GET' && parsedUrl === '/api/db') {
+    if (!requireAuth(req, res)) return;
     try {
       const dbRes = await fetch(`${FIREBASE}/vvg_database.json`);
       if (dbRes.ok) {
@@ -261,6 +418,42 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // ── GET /api/users/profile ──────────────
+  if (req.method === 'GET' && parsedUrl === '/api/users/profile') {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    const user = USERS.find(u => u && u.id === session.id);
+    if (!user) return jsonRes(res, 404, { success: false, message: 'User not found' });
+    
+    // Return full profile excluding password
+    const { password, ...safeUser } = user;
+    return jsonRes(res, 200, { success: true, user: safeUser });
+  }
+
+  // ── PUT /api/users/profile ──────────────
+  if (req.method === 'PUT' && parsedUrl === '/api/users/profile') {
+    const session = requireAuth(req, res);
+    if (!session) return;
+    
+    try {
+      const body = await parseBody(req);
+      const idx = USERS.findIndex(u => u && u.id === session.id);
+      if (idx === -1) return jsonRes(res, 404, { success: false, message: 'User not found' });
+      
+      const { nameSa, specialization, assignedGanaId, yearsExperience } = body;
+      
+      if (nameSa !== undefined) USERS[idx].nameSa = nameSa;
+      if (specialization !== undefined) USERS[idx].specialization = specialization;
+      if (assignedGanaId !== undefined) USERS[idx].ganaId = assignedGanaId || null;
+      if (yearsExperience !== undefined) USERS[idx].yearsExperience = yearsExperience;
+      
+      await saveUsers();
+      return jsonRes(res, 200, { success: true, message: 'Profile updated' });
+    } catch(e) {
+      return jsonRes(res, 500, { success: false, error: e.message });
+    }
+  }
+
   // ── GET /api/users — list acharyas ───────
   if (req.method === 'GET' && parsedUrl === '/api/users') {
     if (!requireAuth(req, res)) return;
@@ -275,10 +468,22 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && parsedUrl === '/api/auth/register') {
     try {
       const body = await parseBody(req);
-      const { name, nameSa, email, password, phone, specialization } = body;
+      const { name, nameSa, email, password, phone, specialization, assignedGanaId, yearsExperience } = body;
 
       if (!name || !email || !password) {
         return jsonRes(res, 400, { success: false, message: 'Name, email and password are required.' });
+      }
+
+      // Password strength validation
+      if (password.length < 8) {
+        return jsonRes(res, 400, { success: false, message: 'Password must be at least 8 characters long.' });
+      }
+      const hasUppercase = /[A-Z]/.test(password);
+      const hasLowercase = /[a-z]/.test(password);
+      const hasDigit = /[0-9]/.test(password);
+      const hasSpecial = /[^A-Za-z0-9]/.test(password);
+      if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+        return jsonRes(res, 400, { success: false, message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.' });
       }
 
       // Check if email already exists
@@ -292,33 +497,43 @@ const server = http.createServer(async (req, res) => {
         name:           name.trim(),
         nameSa:         (nameSa || '').trim(),
         email:          email.trim().toLowerCase(),
-        password:       password,
+        password:       hashPassword(password),
         role:           'Pending',
-        ganaId:         null,
+        ganaId:         assignedGanaId || null,
         phone:          (phone || '').trim(),
         specialization: (specialization || '').trim(),
+        yearsExperience: yearsExperience || '',
         registeredAt:   new Date().toISOString()
       };
 
-      // Append to Firebase
+      // Append to Firebase and local storage
       USERS.push(newUser);
-      await fetch(`${FIREBASE}/users.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(USERS)
-      });
+      await saveUsers();
 
 
 
       console.log(`[VVG] ★ New Acharya registered: ${newUser.name} <${newUser.email}> — PENDING ADMIN APPROVAL`);
       
-      // Send Registration Received Email (Fire and forget, ignoring errors for now)
-      transporter.sendMail({
-        from: '"VVG Admin System" <vvgurukulam.system@gmail.com>',
-        to: newUser.email,
-        subject: 'Registration Received - Veda Vijnana Gurukulam',
-        text: `Namaskaram ${newUser.name},\n\nYour registration for the Veda Vijnana Gurukulam system has been received. Your chosen specialization is ${newUser.specialization || 'Not Specified'}.\n\nAn Admin will review and approve your account shortly.\n\nPranam,\nVVG System`
-      }).catch(err => console.log('Mail error (expected if no real credentials):', err.message));
+      const emailHtml = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+          <div style="background:#5A2E0E;color:#F0E6D2;padding:20px;text-align:center;">
+            <h2 style="margin:0;letter-spacing:1px;">वेदविज्ञानगुरुकुलम्</h2>
+            <p style="margin:5px 0 0;font-size:14px;">Veda Vijnana Gurukulam</p>
+          </div>
+          <div style="padding:30px;background:#FAFAFA;color:#333;">
+            <h3 style="margin-top:0;">नमस्कारम् (Namaskaram) ${newUser.nameSa || newUser.name},</h3>
+            <p>Your registration for the Veda Vijnana Gurukulam faculty portal has been received.</p>
+            <table style="width:100%;margin:20px 0;border-collapse:collapse;background:#fff;border:1px solid #eee;">
+              <tr><td style="padding:10px;border-bottom:1px solid #eee;color:#666;"><strong>Role Requested:</strong></td><td style="padding:10px;border-bottom:1px solid #eee;">Acharya</td></tr>
+              <tr><td style="padding:10px;border-bottom:1px solid #eee;color:#666;"><strong>Specialization:</strong></td><td style="padding:10px;border-bottom:1px solid #eee;">${newUser.specialization || 'Not Specified'}</td></tr>
+              <tr><td style="padding:10px;color:#666;"><strong>Status:</strong></td><td style="padding:10px;color:#C62828;font-weight:bold;">Pending Approval</td></tr>
+            </table>
+            <p style="line-height:1.5;">An Administrator will review your details. Once your account is approved, you will receive another email and be able to log in to the system.</p>
+            <p style="margin-top:30px;font-size:12px;color:#888;text-align:center;">This is an automated message. Please do not reply directly.</p>
+          </div>
+        </div>
+      `;
+      sendNotificationEmail(newUser.email, 'Registration Received - Veda Vijnana Gurukulam', emailHtml);
 
       return jsonRes(res, 200, {
         success: true,
@@ -340,11 +555,7 @@ const server = http.createServer(async (req, res) => {
       
       USERS[userIndex].role = 'Acharya';
       
-      await fetch(`${FIREBASE}/users.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(USERS)
-      });
+      await saveUsers();
 
       // Send Approval Email
       transporter.sendMail({
@@ -368,11 +579,7 @@ const server = http.createServer(async (req, res) => {
       const { id } = body;
       USERS = USERS.filter(u => u && u.id !== id);
       
-      await fetch(`${FIREBASE}/users.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(USERS)
-      });
+      await saveUsers();
       return jsonRes(res, 200, { success: true, message: 'User rejected and removed' });
     } catch(e) {
       return jsonRes(res, 500, { success: false, error: e.message });
@@ -392,13 +599,32 @@ const server = http.createServer(async (req, res) => {
       const userIndex = USERS.findIndex(u => u && u.id === id);
       if (userIndex === -1) return jsonRes(res, 404, { success: false, message: 'User not found' });
       
-      USERS[userIndex].role = role;
+      const user = USERS[userIndex];
+      const oldRole = user.role;
+      user.role = role;
       
-      await fetch(`${FIREBASE}/users.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(USERS)
-      });
+      await saveUsers();
+      
+      // If promoting from Pending, send approval email
+      if (oldRole === 'Pending' && role !== 'Pending') {
+        const approvalHtml = `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+            <div style="background:#1B5E20;color:#E8F5E9;padding:20px;text-align:center;">
+              <h2 style="margin:0;letter-spacing:1px;">वेदविज्ञानगुरुकुलम्</h2>
+            </div>
+            <div style="padding:30px;background:#FAFAFA;color:#333;">
+              <h3 style="margin-top:0;">Account Approved!</h3>
+              <p>Namaskaram ${user.nameSa || user.name},</p>
+              <p>Your registration has been reviewed and approved by the Administrator.</p>
+              <p><strong>Your Assigned Role:</strong> ${role}</p>
+              <p>You may now log in to the portal using your registered email and password. Once logged in, please navigate to the <strong>Profile</strong> section to complete your details.</p>
+              <a href="http://localhost:3000/#login" style="display:inline-block;padding:10px 20px;background:#D4AF37;color:#fff;text-decoration:none;border-radius:4px;margin-top:15px;font-weight:bold;">Login to Portal</a>
+            </div>
+          </div>
+        `;
+        sendNotificationEmail(user.email, 'Account Approved - Veda Vijnana Gurukulam', approvalHtml);
+      }
+      
       return jsonRes(res, 200, { success: true, message: `Role updated to ${role}` });
     } catch(e) {
       return jsonRes(res, 500, { success: false, error: e.message });
@@ -416,10 +642,23 @@ const server = http.createServer(async (req, res) => {
   // ══════════════════════════════════════════
   let filePath = path.join(__dirname, parsedUrl === '/' ? 'index.html' : parsedUrl);
 
-  // Security: prevent directory traversal
+  // Security: prevent directory traversal & information disclosure
   const safePath = path.normalize(filePath);
   if (!safePath.startsWith(__dirname)) {
     res.statusCode = 403; res.end('Forbidden'); return;
+  }
+
+  function isPathAllowed(targetPath) {
+    const normPath = path.normalize(targetPath);
+    if (!normPath.startsWith(__dirname)) return false;
+    const relativePath = path.relative(__dirname, normPath).replace(/\\/g, '/');
+    return (
+      relativePath === 'index.html' ||
+      relativePath === '' ||
+      relativePath.startsWith('css/') ||
+      relativePath.startsWith('app/') ||
+      relativePath.startsWith('assets/')
+    );
   }
 
   fs.stat(filePath, (err, stats) => {
@@ -428,9 +667,17 @@ const server = http.createServer(async (req, res) => {
       if (!ext) {
         // SPA: fallback to index.html
         filePath = path.join(__dirname, 'index.html');
-        fs.stat(filePath, (fe, fs2) => {
-          if (fe || !fs2.isFile()) { res.statusCode = 404; res.end('404'); }
-          else serveFile(filePath, res);
+        fs.stat(filePath, (fe, stats2) => {
+          if (fe || !stats2.isFile()) { res.statusCode = 404; res.end('404'); }
+          else {
+            if (!isPathAllowed(filePath)) {
+              res.statusCode = 403;
+              res.setHeader('Content-Type', 'text/plain');
+              res.end('Forbidden: Access is restricted.');
+              return;
+            }
+            serveFile(filePath, res);
+          }
         });
       } else {
         res.statusCode = 404;
@@ -438,6 +685,12 @@ const server = http.createServer(async (req, res) => {
         res.end(`404: ${parsedUrl}`);
       }
     } else {
+      if (!isPathAllowed(filePath)) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end('Forbidden: Access is restricted.');
+        return;
+      }
       serveFile(filePath, res);
     }
   });

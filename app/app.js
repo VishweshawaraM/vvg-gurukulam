@@ -16,6 +16,7 @@ import { renderTimetable }     from './pages/timetable.js?v=3.5';
 import { renderAcharyas }      from './pages/acharyas.js?v=3.5';
 import { renderAnnouncements } from './pages/announcements.js?v=3.5';
 import { renderDocuments }     from './pages/documents.js?v=3.5';
+import { renderProfile }       from './pages/profile.js?v=3.5';
 
 const pageRenderers = {
   'login':         renderLogin,
@@ -26,7 +27,8 @@ const pageRenderers = {
   'timetable':     renderTimetable,
   'acharyas':      renderAcharyas,
   'announcements': renderAnnouncements,
-  'documents':     renderDocuments
+  'documents':     renderDocuments,
+  'profile':       renderProfile
 };
 
 // Traditional Vaidika Panchangam Generator
@@ -134,6 +136,12 @@ function buildSidebarHTML(user, panchangam, isDocAllowed, unreadAnnCount) {
       group: 'संचारः (Communication)',
       items: [
         { hash: 'announcements', icon: `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`, label: 'सूचनाकेन्द्रम्', tag: 'सूचना', roles: 'all', badge: unreadAnnCount > 0 ? unreadAnnCount : null }
+      ]
+    },
+    {
+      group: 'वैयक्तिकम् (Personal)',
+      items: [
+        { hash: 'profile', icon: `<circle cx="12" cy="7" r="4"/><path d="M5.4 20.1a8.4 8.4 0 0 1 13.2 0"/>`, label: 'मम विवरणम्', tag: 'प्रोफाइल', roles: 'all' }
       ]
     }
   ];

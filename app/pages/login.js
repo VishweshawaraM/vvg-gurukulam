@@ -185,7 +185,22 @@ export function renderLogin(container, appInstance) {
                   <option value="Vedanta">Vedanta</option>
                   <option value="Vyakarana">Vyakarana</option>
                   <option value="Mimamsa">Mimamsa</option>
+                  <option value="Sahitya">Sahitya</option>
+                  <option value="Nyaya">Nyaya</option>
                 </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-gana">Assigned Gana</label>
+                <select id="reg-gana" class="form-control">
+                  <option value="" selected>None / Select your Gana</option>
+                  ${(db.getAllGanas ? db.getAllGanas() : []).map(g => `<option value="${g.id}">${g.name} (${g.englishName})</option>`).join('')}
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" for="reg-exp">Years of Experience</label>
+                <input type="number" id="reg-exp" class="form-control" placeholder="e.g. 5" min="0">
               </div>
 
               <div class="form-group" style="margin-bottom:0;">
@@ -348,6 +363,8 @@ export function renderLogin(container, appInstance) {
       name:           container.querySelector('#reg-name').value.trim(),
       nameSa:         container.querySelector('#reg-name-sa').value.trim(),
       specialization: container.querySelector('#reg-spec').value.trim(),
+      assignedGanaId: container.querySelector('#reg-gana').value,
+      yearsExperience:container.querySelector('#reg-exp').value,
       phone:          container.querySelector('#reg-phone').value.trim(),
       email:          container.querySelector('#reg-email').value.trim(),
       password:       container.querySelector('#reg-password').value

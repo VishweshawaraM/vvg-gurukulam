@@ -574,8 +574,33 @@ export const db = {
   },
 
   // ─── CRUD: Acharyas ───
-  getAllAcharyas() { return this.get().acharyas; },
-  getAcharyaById(id) { return this.get().acharyas.find(a => a.id === id); },
+  getAllAcharyas() { 
+    const dbData = this.get();
+    const seeded = dbData.acharyas || [];
+    const registered = (dbData.users || []).filter(u => u.role === 'Acharya' || u.role === 'Pracharya' || u.role === 'Admin');
+    
+    // Map registered users to Acharya schema so they fit in the directory smoothly
+    const mapped = registered.map(u => ({
+      id: u.id,
+      name: u.nameSa || u.name,
+      englishName: u.name,
+      specialization: u.specialization || 'General',
+      experience: u.yearsExperience ? u.yearsExperience + ' Years' : '5 Years',
+      photo: null,
+      contact: u.phone || '',
+      email: u.email,
+      ganaId: u.ganaId || null,
+      role: u.role
+    }));
+
+    // Remove any seeded acharyas that have the same email as registered ones to prevent duplicates
+    const finalSeeded = seeded.filter(s => !mapped.some(m => m.email.toLowerCase() === s.email.toLowerCase()));
+    
+    return [...finalSeeded, ...mapped];
+  },
+  getAcharyaById(id) { 
+    return this.getAllAcharyas().find(a => a.id === id); 
+  },
   addAcharya(acharya) {
     const data = this.get();
     if (!data.acharyas) data.acharyas = [];
