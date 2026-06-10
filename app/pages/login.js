@@ -133,6 +133,11 @@ export function renderLogin(container, appInstance) {
                 Authenticating…
               </span>
             </button>
+
+            <button type="button" id="bypass-login-btn" class="btn btn-ghost login-submit-btn" style="margin-top: 10px; border-color: var(--gold-border); background: var(--bg-card); color: var(--saffron-royal); font-weight: 800; width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M17.96 14.045a7.965 7.965 0 0 0-11.92 0m9.933-2.98a4.978 4.978 0 0 0-7.946 0m5.96-2.98a1.992 1.992 0 0 0-2.974 0M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>
+              साक्षात्-प्रवेशः (Quick Admin Access)
+            </button>
           </form>
 
           <!-- Help note + Register link -->
@@ -276,6 +281,25 @@ export function renderLogin(container, appInstance) {
   container.querySelector('#login-form').addEventListener('submit', e => {
     e.preventDefault();
     submitLogin();
+  });
+
+  // ── Bypass Login (Quick Access) ──────────────────────
+  container.querySelector('#bypass-login-btn').addEventListener('click', () => {
+    const adminUser = {
+      id:        "usr_vedavijnanagurukulam",
+      name:      "Pradhana Acharyah",
+      nameSa:    "प्रधानाचार्यः",
+      role:      "Admin",
+      email:     "vedavijnanagurukulam@gmail.com",
+      ganaId:    null,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('vvg_token', 'bypass_token');
+    sessionStorage.setItem('vvg_user', JSON.stringify(adminUser));
+    
+    const card = container.querySelector('#main-login-card');
+    if (card) { card.style.transform = 'scale(0.95)'; card.style.opacity = '0'; }
+    setTimeout(() => router.navigate('dashboard'), 350);
   });
 
   async function submitLogin() {

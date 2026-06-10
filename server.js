@@ -257,8 +257,12 @@ function serveFile(filePath, res) {
   });
 }
 
-// ── Helper: Authentication (Bypassed) ─────────────────────
+// ── Helper: Authentication (Bypassed with session fallback) ─────────────────────
 function requireAuth(req, res) {
+  const token = req.headers['x-session-token'];
+  if (token && SESSIONS[token]) {
+    return SESSIONS[token];
+  }
   return {
     id: "usr_vedavijnanagurukulam",
     name: "Pradhana Acharyah",
@@ -270,6 +274,12 @@ function requireAuth(req, res) {
 }
 
 function requireAdmin(req, res) {
+  const token = req.headers['x-session-token'];
+  if (token && SESSIONS[token]) {
+    if (['Admin', 'Office Staff'].includes(SESSIONS[token].role)) {
+      return SESSIONS[token];
+    }
+  }
   return {
     id: "usr_vedavijnanagurukulam",
     name: "Pradhana Acharyah",
