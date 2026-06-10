@@ -204,7 +204,6 @@ export function renderAttendance(container, appInstance) {
             <span>${isTeacher ? 'My Classes' : 'All Classes'} — Class Log & Attendance (${dayName})</span>
           </h3>
         </div>
-
         <div style="margin-bottom: 1.5rem;">
           <label style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); display: block; margin-bottom: 3px;">Select Date</label>
           <input type="date" id="attend-date-input" class="form-control" style="width: 200px; padding: 0.5rem 0.85rem;" value="${selectedDateStr}">
@@ -212,83 +211,136 @@ export function renderAttendance(container, appInstance) {
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
     `;
 
-    if (myClasses.length === 0) {
+    function getGanaByClassId(classId) {
+      const timetable = db.get().timetable || {};
+      const ganas = db.getAllGanas();
+      for (const ganaId in timetable) {
+        const slots = timetable[ganaId] || {};
+        for (const slotId in slots) {
+          const classIds = slots[slotId];
+          if (Array.isArray(classIds) && classIds.includes(classId)) {
+            return ganas.find(g => g.id === ganaId);
+          }
+        }
+      }
+      return null;
+    }
+
+    const groups = {};
+    const ganas = db.getAllGanas();
+    ganas.forEach(g => {
+      groups[g.id] = {
+        id: g.id,
+        name: g.name,
+        englishName: g.englishName || g.name,
+        color: g.color || '#C4974C',
+        classes: []
+      };
+    });
+    groups['unassigned'] = {
+      id: 'unassigned',
+      name: 'वर्गीकृताः वर्गाः',
+      englishName: 'Unassigned Classes',
+      color: '#9E7B5A',
+      classes: []
+    };
+
+    myClasses.forEach(cls => {
+      const gana = getGanaByClassId(cls.id);
+      const targetGanaId = gana ? gana.id : 'unassigned';
+      groups[targetGanaId].classes.push(cls);
+    });
+
+    const activeGroups = Object.values(groups).filter(g => g.classes.length > 0);
+
+    if (activeGroups.length === 0) {
       html += `<div style="text-align:center; padding: 2rem; color:var(--sandal-light);">No classes assigned to you.</div>`;
     }
 
-    myClasses.forEach(cls => {
-      const attendanceRecord = db.getAttendance(cls.id, selectedDateStr) || {};
-      const slotStudents = attendanceRecord.students || {};
-      const classSummary = attendanceRecord.classSummary || '';
-      
-      const isComplete = db.isClassComplete(cls.id, selectedDateStr);
-
+    activeGroups.forEach(group => {
       html += `
-        <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border); padding: 1.25rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--gold-border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
-             <div>
-              <span style="font-size: 1.1rem; font-weight: 800; font-family: var(--font-sanskrit-ui); color: var(--saffron-royal); display: block;">
-                ${cls.name}
-                ${isComplete ? '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:var(--forest-tulsi); color:white; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">COMPLETED</span>' : '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:#e0e0e0; color:#555; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">INCOMPLETE</span>'}
-              </span>
-              <span style="font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; color: var(--charcoal-sandal);">
-                ${cls.subject}
-              </span>
-            </div>
-            ${!isTeacher ? `<div style="font-size: 0.75rem; font-weight: bold; color: var(--sandal-light);">Acharya: ${cls.acharyaName || 'Unassigned'}</div>` : ''}
-          </div>
-          
-          <form class="class-log-form" data-class-id="${cls.id}">
-            <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
-              <span>छात्र-उपस्थितिः (Student Checkboxes)</span>
-            </div>
-            
-            <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
-              ${(cls.studentIds || []).length === 0 ? `<div style="padding:10px; color:var(--sandal-light); font-size:0.8rem; grid-column: 1 / -1;">No students assigned to this class.</div>` : 
-                (cls.studentIds || []).map(studentId => {
-                  const s = db.getStudentById(studentId);
-                  if (!s) return '';
-                  const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
-                  const ganaObj = db.getGanaById(s.ganaId);
-                  
-                  return `
-                  <label class="student-label" style="display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
-                    <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
-                    <div style="display: flex; flex-direction: column; overflow: hidden;">
-                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
-                      <span style="font-size: 0.6rem; color: var(--saffron-royal);">${ganaObj?.name||''}</span>
-                    </div>
-                  </label>
-                  `;
-                }).join('')}
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.25rem;">
-              <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Summary (What was taught today? Required) *</label>
-              <textarea name="classSummary" class="form-control" rows="3" style="font-size: 0.85rem;" placeholder="Write a brief summary (approx 3-4 sentences) describing what was taught today..." required minlength="10">${classSummary}</textarea>
-            </div>
-
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <button type="submit" class="btn btn-saffron" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 800;">
-                  Save Class Attendance
-                </button>
-                <button type="button" class="btn btn-ghost btn-sm mark-all-btn" style="font-size: 0.78rem;">Toggle All</button>
-                <button type="button" class="btn btn-ghost btn-sm btn-manage-roster" data-class-id="${cls.id}" style="font-size: 0.78rem; border-color: var(--gold-border);">
-                  <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  Pick Students
-                </button>
-              </div>
-              <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); font-weight: 800; display: none; align-items: center; gap: 4px;">
-                <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                Saved!
-              </span>
-            </div>
-          </form>
+        <!-- Gana Partition Header -->
+        <div class="gana-partition-header" style="border-left: 5px solid ${group.color}; background: linear-gradient(90deg, var(--gold-light), transparent); padding: 10px 16px; border-radius: 6px; margin-top: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 10px; box-shadow: inset 2px 0 0 ${group.color};">
+          <span style="font-family: var(--font-sanskrit-ui); font-size: 1.2rem; font-weight: 800; color: var(--saffron-royal);">${group.name}</span>
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--sandal-light); background: rgba(196,151,76,0.15); padding: 2px 8px; border-radius: 12px; font-family: var(--font-ui); text-transform: uppercase; letter-spacing: 0.5px;">${group.englishName}</span>
+          <span style="margin-left: auto; font-size: 0.72rem; font-weight: bold; color: var(--sandal-light);">${group.classes.length} ${group.classes.length === 1 ? 'Class' : 'Classes'}</span>
         </div>
       `;
+
+      group.classes.forEach(cls => {
+        const attendanceRecord = db.getAttendance(cls.id, selectedDateStr) || {};
+        const slotStudents = attendanceRecord.students || {};
+        const classSummary = attendanceRecord.classSummary || '';
+        
+        const isComplete = db.isClassComplete(cls.id, selectedDateStr);
+
+        html += `
+          <div class="gurukula-card" style="margin: 0 0 1rem 0; background: var(--bg-card); border: 1px solid var(--gold-border); padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--gold-border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+               <div>
+                <span style="font-size: 1.1rem; font-weight: 800; font-family: var(--font-sanskrit-ui); color: var(--saffron-royal); display: block;">
+                  ${cls.name}
+                  ${isComplete ? '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:var(--forest-tulsi); color:white; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">COMPLETED</span>' : '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:#e0e0e0; color:#555; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">INCOMPLETE</span>'}
+                </span>
+                <span style="font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; color: var(--charcoal-sandal);">
+                  ${cls.subject}
+                </span>
+              </div>
+              ${!isTeacher ? `<div style="font-size: 0.75rem; font-weight: bold; color: var(--sandal-light);">Acharya: ${cls.acharyaName || 'Unassigned'}</div>` : ''}
+            </div>
+            
+            <form class="class-log-form" data-class-id="${cls.id}">
+              <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+                <span>छात्र-उपस्थितिः (Student Checkboxes)</span>
+              </div>
+              
+              <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
+                ${(cls.studentIds || []).length === 0 ? `<div style="padding:10px; color:var(--sandal-light); font-size:0.8rem; grid-column: 1 / -1;">No students assigned to this class.</div>` : 
+                  (cls.studentIds || []).map(studentId => {
+                    const s = db.getStudentById(studentId);
+                    if (!s) return '';
+                    const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
+                    const ganaObj = db.getGanaById(s.ganaId);
+                    
+                    return `
+                    <label class="student-label" style="display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
+                      <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
+                      <div style="display: flex; flex-direction: column; overflow: hidden;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
+                        <span style="font-size: 0.6rem; color: var(--saffron-royal);">${ganaObj?.name||''}</span>
+                      </div>
+                    </label>
+                    `;
+                  }).join('')}
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Summary (What was taught today? Required) *</label>
+                <textarea name="classSummary" class="form-control" rows="3" style="font-size: 0.85rem;" placeholder="Write a brief summary (approx 3-4 sentences) describing what was taught today..." required minlength="10">${classSummary}</textarea>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <button type="submit" class="btn btn-saffron" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 800;">
+                    Save Class Attendance
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm mark-all-btn" style="font-size: 0.78rem;">Toggle All</button>
+                  <button type="button" class="btn btn-ghost btn-sm btn-manage-roster" data-class-id="${cls.id}" style="font-size: 0.78rem; border-color: var(--gold-border);">
+                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Pick Students
+                  </button>
+                </div>
+                <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); font-weight: 800; display: none; align-items: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Saved!
+                </span>
+              </div>
+            </form>
+          </div>
+        `;
+      });
     });
-    
+
     html += `</div></div>`;
     target.innerHTML = html;
     
