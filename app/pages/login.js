@@ -428,9 +428,32 @@ export function renderLogin(container, appInstance) {
     const slots    = db.getTimeSlots ? db.getTimeSlots() : {};
     const ttData   = myGana ? (db.get().timetable[myGana.id] || {}) : {};
     const slotIds  = ['slot_1','slot_2','slot_3','slot_4','slot_5','slot_6','slot_7'];
-    const schedule = slotIds
-      .map(id => ({ id, info: slots[id] || {}, data: ttData[id] || null }))
-      .filter(s => s.data && s.data.subject);
+    const schedule = [];
+    slotIds.forEach(id => {
+      const classIds = ttData[id] || [];
+      if (Array.isArray(classIds)) {
+        classIds.forEach(cId => {
+          const cls = db.getClassById(cId);
+          if (cls) {
+            schedule.push({
+              id,
+              info: slots[id] || {},
+              subject: cls.name,
+              engSubject: cls.subject,
+              teacher: cls.acharyaName
+            });
+          }
+        });
+      } else if (classIds && typeof classIds === 'object' && classIds.subject) {
+        schedule.push({
+          id,
+          info: slots[id] || {},
+          subject: classIds.subject,
+          engSubject: classIds.engSubject,
+          teacher: classIds.teacher
+        });
+      }
+    });
 
     const initials = user.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
@@ -496,10 +519,10 @@ export function renderLogin(container, appInstance) {
                      border:1px solid var(--sandal-div);border-radius:var(--radius-sm);font-size:0.78rem;">
                   <div>
                     <span class="devanagari-body" style="font-weight:700;color:var(--charcoal-sandal);">
-                      ${s.data.subject}
+                      ${s.subject}
                     </span>
                     <span style="color:var(--sandal-light);margin-left:6px;font-size:0.72rem;">
-                      ${s.data.engSubject || ''}
+                      ${s.engSubject || ''}
                     </span>
                   </div>
                   <span style="color:var(--saffron-royal);font-weight:700;font-size:0.72rem;white-space:nowrap;">

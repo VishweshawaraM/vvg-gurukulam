@@ -38,8 +38,9 @@ export function renderTimetable(container, appInstance) {
     const rows = [['Time Slot', 'Sanskrit Name', 'Time', ...ganas.map(g => g.name + ' / ' + g.englishName)]];
     daily.forEach(({ slotInfo, ganaSlots }) => {
       const cols = [slotInfo.labelEn, slotInfo.label, slotInfo.time];
-      ganaSlots.forEach(({ slot }) => {
-        cols.push(slot && slot.engSubject ? `${slot.engSubject} – ${slot.teacherEn || ''}` : '—');
+      ganaSlots.forEach(({ classIds }) => {
+        const classes = (classIds||[]).map(id=>db.getClassById(id)).filter(Boolean);
+        cols.push(classes.length ? classes.map(c=>c.name).join(' | ') : '—');
       });
       rows.push(cols);
     });
@@ -85,6 +86,10 @@ export function renderTimetable(container, appInstance) {
           <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           सम्पूर्णसारिणी (All Ganas — Daily View)
         </button>
+        <button class="btn ${activeView === 'classes' ? 'btn-saffron' : 'btn-ghost'}" id="btn-view-classes">
+          <svg viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          कक्षा-प्रबन्धनम् (Manage Classes)
+        </button>
         <button class="btn ${activeView === 'gana' ? 'btn-saffron' : 'btn-ghost'}" id="btn-view-gana">
           <svg viewBox="0 0 24 24"><circle cx="9" cy="5" r="3"/><circle cx="15" cy="5" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M13 13a6 6 0 0 1 8 6"/></svg>
           गणसारिणी (Single Gana View)
@@ -109,11 +114,14 @@ export function renderTimetable(container, appInstance) {
     // Bindings
     container.querySelector('#btn-view-daily').addEventListener('click', () => { activeView = 'daily'; renderView(); });
     container.querySelector('#btn-view-gana').addEventListener('click', () => { activeView = 'gana'; renderView(); });
+    const viewClassesBtn = container.querySelector('#btn-view-classes');
+    if (viewClassesBtn) viewClassesBtn.addEventListener('click', () => { activeView = 'classes'; renderView(); });
     container.querySelector('#btn-export-tt-csv').addEventListener('click', downloadCSV);
     container.querySelector('#btn-print-tt').addEventListener('click', () => window.print());
 
     if (activeView === 'daily') renderDailyView();
-    else renderGanaView();
+    else if (activeView === 'gana') renderGanaView();
+    else renderClassesView();
   }
 
   // ═══ ALL-GANA DAILY TABLE VIEW ═══
@@ -176,21 +184,25 @@ export function renderTimetable(container, appInstance) {
                       <div class="tt-slot-time">${slotInfo.time}</div>
                     </td>
                     ${ganaSlots.map(({ gana, slot }) => {
-                      const isEmpty = !slot || !slot.subject;
+                      const classIds = Array.isArray(slot) ? slot : [];
+                      const slotClasses = classIds.map(id => db.getClassById(id)).filter(Boolean);
+                      const isEmpty = slotClasses.length === 0;
                       return `
                         <td class="tt-subject-cell ${isEmpty ? 'tt-empty-cell' : ''} ${isCurrentSlot && !isEmpty ? 'tt-active-cell' : ''}"
                           data-gana-id="${gana.id}" data-slot-id="${slotId}"
                           ${canEdit ? 'style="cursor:pointer;"' : ''}>
                           ${!isEmpty ? `
-                            <div class="tt-subject-body">
-                              <div class="tt-subject-sa">${slot.subject}</div>
-                              <div class="tt-subject-en">${slot.engSubject}</div>
-                              ${slot.teacher ? `
-                                <div class="tt-teacher">
-                                  <svg viewBox="0 0 24 24" style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
-                                  ${slot.teacher}
+                            <div class="tt-subject-body" style="display:flex; flex-direction:column; gap:6px;">
+                              ${slotClasses.map(c => `
+                                <div class="tt-subject-item" style="padding: 2px 0; border-bottom: 1px dashed var(--sandal-div); display: flex; flex-direction: column;">
+                                  <div class="tt-subject-sa" style="font-weight:700;">${c.name}</div>
+                                  <div class="tt-subject-en" style="font-size:0.75rem;">${c.subject}</div>
+                                  <div class="tt-teacher" style="font-size:0.7rem; color:var(--sandal-light);">
+                                    <svg viewBox="0 0 24 24" style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;display:inline-block;vertical-align:middle;margin-right:2px;"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
+                                    ${c.acharyaName || 'Unassigned'}
+                                  </div>
                                 </div>
-                              ` : ''}
+                              `).join('')}
                             </div>
                             ${canEdit ? `<button class="tt-edit-btn no-print" data-gana-id="${gana.id}" data-slot-id="${slotId}" title="Edit">✏</button>` : ''}
                           ` : `
@@ -261,9 +273,10 @@ export function renderTimetable(container, appInstance) {
       <div style="display:flex;flex-direction:column;gap:10px;" id="gana-slot-list">
         ${SLOT_IDS.map(slotId => {
           const slotInfo = timeSlots[slotId] || { label: slotId, labelEn: slotId, time: '' };
-          const slot = ganaTimetable[slotId];
+          const classIds = ganaTimetable[slotId] || [];
+          const slotClasses = classIds.map(id => db.getClassById(id)).filter(Boolean);
           const isActive = slotId === currentSlotId;
-          const isEmpty = !slot || !slot.subject;
+          const isEmpty = slotClasses.length === 0;
 
           return `
             <div class="gana-schedule-row ${isActive ? 'active-schedule-row' : ''}" data-slot-id="${slotId}">
@@ -278,15 +291,18 @@ export function renderTimetable(container, appInstance) {
               <!-- Subject Block -->
               <div class="gana-sched-subject ${isEmpty ? 'gana-sched-empty' : ''}">
                 ${!isEmpty ? `
-                  <div class="gana-sched-subject-sa">${slot.subject}</div>
-                  <div class="gana-sched-subject-en">${slot.engSubject}</div>
-                  ${slot.teacher ? `
-                    <div class="gana-sched-teacher">
-                      <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
-                      ${slot.teacher}
-                      ${slot.teacherEn && slot.teacherEn !== slot.teacher ? `<span style="opacity:0.6;font-size:0.65rem;"> (${slot.teacherEn})</span>` : ''}
-                    </div>
-                  ` : ''}
+                  <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                    ${slotClasses.map(c => `
+                      <div style="border-bottom: 1px dashed var(--sandal-div); padding-bottom: 6px; width: 100%;">
+                        <div class="gana-sched-subject-sa" style="font-weight:700;">${c.name}</div>
+                        <div class="gana-sched-subject-en" style="font-size:0.82rem;">${c.subject}</div>
+                        <div class="gana-sched-teacher" style="font-size:0.75rem; color:var(--sandal-light); margin-top:2px;">
+                          <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;display:inline-block;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
+                          ${c.acharyaName || 'Unassigned'}
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
                 ` : `<span class="gana-sched-free">— स्वाध्यायः / Free Period —</span>`}
               </div>
 
@@ -323,14 +339,18 @@ export function renderTimetable(container, appInstance) {
     const gana = ganas.find(g => g.id === ganaId);
     const timeSlots = db.getTimeSlots();
     const slotInfo = timeSlots[slotId] || { label: slotId, labelEn: slotId, time: '' };
-    const current = (db.getTimetable(ganaId) || {})[slotId] || {};
+    
+    // Instead of raw subject string, we now have an array of classIds
+    const currentClassIds = (db.getTimetable(ganaId) || {})[slotId] || [];
+    const allClasses = db.getAllClasses();
+    
     const modal = container.querySelector('#tt-modal');
     const backdrop = container.querySelector('#tt-backdrop');
 
     modal.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--sandal-div);padding-bottom:1rem;">
         <div>
-          <h3 style="font-family:var(--font-sanskrit);font-size:1.1rem;color:var(--charcoal-sandal);font-weight:normal;margin-bottom:3px;">समयखण्ड-सम्पादनम्</h3>
+          <h3 style="font-family:var(--font-sanskrit);font-size:1.1rem;color:var(--charcoal-sandal);font-weight:normal;margin-bottom:3px;">समयखण्ड-सम्पादनम् (Assign Classes)</h3>
           <span style="font-family:var(--font-header);font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold-solid);font-weight:900;">
             ${gana?.name} · ${slotInfo.label} (${slotInfo.time})
           </span>
@@ -341,23 +361,25 @@ export function renderTimetable(container, appInstance) {
       </div>
 
       <div style="display:grid;gap:1rem;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label"><span>Subject (Sanskrit) *</span><span class="form-label-sanskrit">विषयः संस्कृते</span></label>
-          <input type="text" id="slot-subj-sa" class="form-control" value="${current.subject || ''}" placeholder="यथा — सिद्धान्तकौमुदी">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label"><span>Subject (English) *</span></label>
-          <input type="text" id="slot-subj-en" class="form-control" value="${current.engSubject || ''}" placeholder="e.g. Siddhanta Kaumudi">
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label"><span>Teacher (Sanskrit)</span><span class="form-label-sanskrit">आचार्यः</span></label>
-            <input type="text" id="slot-teacher-sa" class="form-control" value="${current.teacher || ''}" placeholder="यथा — अरुणाचार्यः">
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label class="form-label"><span>Teacher (English)</span></label>
-            <input type="text" id="slot-teacher-en" class="form-control" value="${current.teacherEn || ''}" placeholder="e.g. Arunacharya">
-          </div>
+        <p style="font-size:0.85rem; color:var(--sandal-light); margin:0;">Select which classes should be conducted during this time slot for this Gana. You can select multiple classes if the Gana is split into different sections (e.g., Vyakarana and Vedanta).</p>
+        
+        <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--gold-solid); border-radius: var(--radius-sm); padding: 0.5rem; background: var(--bg-body);">
+          <table style="width:100%; font-size:0.85rem; border-collapse: collapse;">
+            ${allClasses.length === 0 ? `<tr><td style="padding:1rem;text-align:center;color:var(--sandal-light);">No classes created yet. Go to Classes Management to create them.</td></tr>` : 
+              allClasses.map(c => `
+                <tr>
+                  <td style="padding: 6px; border-bottom: 1px solid var(--sandal-div);">
+                    <label style="display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                      <input type="checkbox" class="class-assign-cb" value="${c.id}" ${currentClassIds.includes(c.id) ? 'checked' : ''}>
+                      <div>
+                        <div style="font-weight:bold;color:var(--charcoal-sandal);">${c.name}</div>
+                        <div style="font-size:0.75rem;color:var(--sandal-light);">${c.subject} · ${c.acharyaName||'Unassigned'} · ${(c.studentIds||[]).length} Students</div>
+                      </div>
+                    </label>
+                  </td>
+                </tr>
+              `).join('')}
+          </table>
         </div>
       </div>
 
@@ -376,14 +398,12 @@ export function renderTimetable(container, appInstance) {
       </div>
     `;
 
-    // Show modal
     backdrop.style.display = 'block';
     modal.style.display = 'block';
     setTimeout(() => {
       modal.style.opacity = '1'; modal.style.pointerEvents = 'all';
       modal.style.transform = 'translate(-50%,-50%) scale(1)';
       backdrop.style.opacity = '1';
-      backdrop.style.transition = 'opacity 0.3s ease';
     }, 10);
 
     function closeModal() {
@@ -397,20 +417,16 @@ export function renderTimetable(container, appInstance) {
     backdrop.addEventListener('click', closeModal, { once: true });
 
     modal.querySelector('#slot-clear-btn').addEventListener('click', () => {
-      if (!confirm('Clear this time slot?')) return;
-      db.saveTimetableSlot(ganaId, slotId, { subject: '', engSubject: '', teacher: '', teacherEn: '' });
+      if (!confirm('Clear all classes from this time slot?')) return;
+      db.saveTimetableSlot(ganaId, slotId, []);
       closeModal();
       showToast('Slot cleared.', 'success');
       setTimeout(() => { if (activeView === 'daily') renderDailyView(); else renderGanaView(); }, 300);
     });
 
     modal.querySelector('#slot-save-btn').addEventListener('click', () => {
-      const sa = modal.querySelector('#slot-subj-sa').value.trim();
-      const en = modal.querySelector('#slot-subj-en').value.trim();
-      const tSa = modal.querySelector('#slot-teacher-sa').value.trim();
-      const tEn = modal.querySelector('#slot-teacher-en').value.trim();
-      if (!sa || !en) { showToast('Please fill both Sanskrit and English subject names.', 'error'); return; }
-      db.saveTimetableSlot(ganaId, slotId, { subject: sa, engSubject: en, teacher: tSa, teacherEn: tEn });
+      const selectedClassIds = Array.from(modal.querySelectorAll('.class-assign-cb:checked')).map(cb => cb.value);
+      db.saveTimetableSlot(ganaId, slotId, selectedClassIds);
       closeModal();
       showToast('Timetable slot updated successfully.', 'success');
       setTimeout(() => { if (activeView === 'daily') renderDailyView(); else renderGanaView(); }, 300);
@@ -418,4 +434,185 @@ export function renderTimetable(container, appInstance) {
   }
 
   renderView();
+
+  // ═══ CLASSES MANAGEMENT VIEW ═══
+  function renderClassesView() {
+    if (!canEdit) {
+      container.querySelector('#tt-content-area').innerHTML = `<div style="text-align:center;padding:2rem;">You do not have permission to manage classes.</div>`;
+      return;
+    }
+
+    const classes = db.getAllClasses();
+    const target = container.querySelector('#tt-content-area');
+
+    target.innerHTML = `
+      <div class="gurukula-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; flex-wrap:wrap; gap: 1rem;">
+          <h3 style="font-family:var(--font-sanskrit); color:var(--charcoal-sandal); margin:0;">कक्षा-प्रबन्धनम् (Class Assignment)</h3>
+          <p style="font-size:0.85rem; color:var(--sandal-light); margin:0; flex:1;">Group students into specific classes. These classes can then be assigned to the timetable slots. Attendance is taken per-class.</p>
+          <button class="btn btn-saffron" id="btn-create-class">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            नूतनकक्षा (Create Class)
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="traditional-table">
+            <thead>
+              <tr>
+                <th>कक्षा (Class Name)</th>
+                <th>विषयः (Subject)</th>
+                <th>आचार्यः (Acharya)</th>
+                <th>छात्राः (Students)</th>
+                <th style="width:100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${classes.length === 0 ? `<tr><td colspan="5" style="text-align:center;padding:2rem;">No classes created yet.</td></tr>` : 
+                classes.map(c => `
+                  <tr>
+                    <td><b>${c.name}</b></td>
+                    <td>${c.subject}</td>
+                    <td>${c.acharyaName || 'Unassigned'}</td>
+                    <td><span class="badge" style="background:var(--saffron-royal);color:#fff;">${(c.studentIds || []).length} Students</span></td>
+                    <td>
+                      <button class="btn btn-gold btn-sm btn-edit-class" data-id="${c.id}" style="padding:4px 10px;">Edit / Assign</button>
+                    </td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    target.querySelector('#btn-create-class').addEventListener('click', () => openClassEditor(null));
+    target.querySelectorAll('.btn-edit-class').forEach(btn => {
+      btn.addEventListener('click', () => openClassEditor(btn.getAttribute('data-id')));
+    });
+  }
+
+  function openClassEditor(classId) {
+    const existingClass = classId ? db.getClassById(classId) : null;
+    const allStudents = db.getAllStudents();
+    const acharyas = db.getUsers().filter(u => u.role === 'Acharya');
+    
+    // Sort students by name
+    allStudents.sort((a,b) => a.name.localeCompare(b.name));
+    
+    const assignedIds = new Set((existingClass && existingClass.studentIds) || []);
+
+    const modal = container.querySelector('#tt-modal');
+    const backdrop = container.querySelector('#tt-backdrop');
+
+    modal.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--sandal-div);padding-bottom:1rem;">
+        <div>
+          <h3 style="font-family:var(--font-sanskrit);font-size:1.1rem;color:var(--charcoal-sandal);font-weight:normal;margin-bottom:3px;">${existingClass ? 'कक्षापरिष्कारः (Edit Class)' : 'नूतनकक्षा (New Class)'}</h3>
+        </div>
+        <button id="class-modal-close" style="background:none;border:1px solid var(--sandal-div);border-radius:var(--radius-sm);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sandal-light);">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div style="display:grid;gap:1rem;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label"><span>Class Name *</span></label>
+          <input type="text" id="class-name" class="form-control" value="${existingClass ? existingClass.name : ''}" placeholder="e.g. Varcho (Vyakarana)" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label"><span>Subject *</span></label>
+          <input type="text" id="class-subject" class="form-control" value="${existingClass ? existingClass.subject : ''}" placeholder="e.g. Vyakarana Mahabhashyam" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label"><span>Acharya (Teacher) *</span></label>
+          <select id="class-acharya" class="form-control" required>
+            <option value="" disabled ${!existingClass ? 'selected' : ''}>Select Acharya...</option>
+            ${acharyas.map(a => `<option value="${a.email}" ${existingClass && existingClass.acharyaId === a.email ? 'selected' : ''}>${a.name}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label"><span>Assign Students</span></label>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--gold-solid); border-radius: var(--radius-sm); padding: 0.5rem; background: var(--bg-body);">
+            <table style="width:100%; font-size:0.85rem; border-collapse: collapse;">
+              ${allStudents.map(s => `
+                <tr>
+                  <td style="padding: 4px; border-bottom: 1px solid var(--sandal-div);">
+                    <label style="display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                      <input type="checkbox" class="student-assign-cb" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
+                      <span>${s.name} <span style="color:var(--sandal-light);font-size:0.75rem;">(${s.section||'None'}, ${db.getGanaById(s.ganaId)?.name||''})</span></span>
+                    </label>
+                  </td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--sandal-div);gap:10px;">
+        <button id="class-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button id="class-save-btn" class="btn btn-saffron">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          संरक्षणम् (Save)
+        </button>
+      </div>
+    `;
+
+    backdrop.style.display = 'block';
+    modal.style.display = 'block';
+    setTimeout(() => {
+      modal.style.opacity = '1'; modal.style.pointerEvents = 'all';
+      modal.style.transform = 'translate(-50%,-50%) scale(1)';
+      backdrop.style.opacity = '1';
+    }, 10);
+
+    function closeModal() {
+      modal.style.opacity = '0'; modal.style.transform = 'translate(-50%,-50%) scale(0.9)';
+      backdrop.style.opacity = '0';
+      setTimeout(() => { backdrop.style.display = 'none'; modal.style.display = 'none'; modal.style.pointerEvents = 'none'; }, 300);
+    }
+
+    modal.querySelector('#class-modal-close').addEventListener('click', closeModal);
+    modal.querySelector('#class-cancel-btn').addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal, { once: true });
+
+    modal.querySelector('#class-save-btn').addEventListener('click', () => {
+      const name = modal.querySelector('#class-name').value.trim();
+      const subj = modal.querySelector('#class-subject').value.trim();
+      const acharyaId = modal.querySelector('#class-acharya').value;
+      
+      if (!name || !subj || !acharyaId) {
+        showToast('Please fill all required fields.', 'error');
+        return;
+      }
+      const acharya = acharyas.find(a => a.email === acharyaId);
+      const studentIds = Array.from(modal.querySelectorAll('.student-assign-cb:checked')).map(cb => cb.value);
+
+      const payload = {
+        name: name,
+        subject: subj,
+        acharyaId: acharyaId,
+        acharyaName: acharya ? acharya.name : '',
+        studentIds: studentIds
+      };
+
+      if (classId) {
+        db.updateClass(classId, payload);
+        showToast('Class updated successfully.', 'success');
+      } else {
+        payload.id = 'cls_' + Date.now();
+        const allClasses = db.getAllClasses();
+        allClasses.push(payload);
+        db._saveData();
+        showToast('Class created successfully.', 'success');
+      }
+      
+      closeModal();
+      renderClassesView();
+    });
+  }
+
 }

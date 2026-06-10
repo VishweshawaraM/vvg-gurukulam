@@ -8,30 +8,41 @@ const DB_KEY     = 'vvg_database';
 const DB_VERSION = '3.5.0'; // Unified attendanceLog[date][gana][slot] canonical structure
 
 export const db = {
+  _cachedData: null,
   get() {
+    if (this._cachedData) return this._cachedData;
     const data    = localStorage.getItem(DB_KEY);
     const version = localStorage.getItem(DB_KEY + '_version');
     if (!data || version !== DB_VERSION) {
       const seeded = this.seed();
       localStorage.setItem(DB_KEY, JSON.stringify(seeded));
       localStorage.setItem(DB_KEY + '_version', DB_VERSION);
+      this._cachedData = seeded;
       return seeded;
     }
     const parsed = JSON.parse(data);
     const result = {
       students: [], acharyas: [], ganas: [], timetable: {}, timeSlots: {}, 
       attendanceLog: {}, documents: [], announcements: [], activities: [], 
-      sheetsConfig: null, ...parsed
+      sheetsConfig: null, classes: [], ...parsed
     };
     if (Array.isArray(result.attendanceLog) || !result.attendanceLog) result.attendanceLog = {};
     if (Array.isArray(result.timetable) || !result.timetable) result.timetable = {};
     if (Array.isArray(result.timeSlots) || !result.timeSlots) result.timeSlots = {};
+    this._cachedData = result;
     return result;
   },
 
   save(data) {
+    this._cachedData = data;
     localStorage.setItem(DB_KEY, JSON.stringify(data));
     this._pushToServer(data); // fire-and-forget sync to server
+  },
+
+  _saveData() {
+    if (this._cachedData) {
+      this.save(this._cachedData);
+    }
   },
 
   // ─── Server Sync (fire-and-forget) ───────────────────────────────────
@@ -67,6 +78,7 @@ export const db = {
         if (localRaw !== serverRaw) {
           localStorage.setItem(DB_KEY, serverRaw);
           localStorage.setItem(DB_KEY + '_version', DB_VERSION);
+          this._cachedData = null; // Clear cache to force reload next time
           console.log('[VVG] Database and Users synced from server (Data updated).');
           return true;
         }
@@ -511,7 +523,8 @@ export const db = {
       documents,
       announcements,
       activities,
-      sheetsConfig
+      sheetsConfig,
+      classes: []
     };
   },
 
@@ -687,21 +700,43 @@ export const db = {
     return dayLog;
   },
   
-  saveAttendance(ganaId, dateStr, slotId, studentStatuses, classSummary = null, classGroups = null) {
+  saveAttendance(classId, dateStr, studentStatuses, classSummary = null) {
     const data = this.get();
     if (!data.attendanceLog) data.attendanceLog = {};
     if (!data.attendanceLog[dateStr]) data.attendanceLog[dateStr] = {};
-    if (!data.attendanceLog[dateStr][ganaId]) data.attendanceLog[dateStr][ganaId] = {};
-    if (!data.attendanceLog[dateStr][ganaId][slotId]) data.attendanceLog[dateStr][ganaId][slotId] = {};
     
-    // Store students under a 'students' key so metadata and statuses coexist
-    data.attendanceLog[dateStr][ganaId][slotId].students = studentStatuses;
-    
-    if (classSummary !== null) {
-      data.attendanceLog[dateStr][ganaId][slotId].classSummary = classSummary;
+    // Fallback for old Gana-Slot signature: saveAttendance(ganaId, dateStr, slotId, studentStatuses, classSummary, classGroups)
+    if (typeof studentStatuses === 'string') {
+      const ganaId = classId;
+      const slotId = studentStatuses;
+      const realStudentStatuses = classSummary;
+      const realClassSummary = arguments[4] || null;
+      
+      if (!data.attendanceLog[dateStr][ganaId]) data.attendanceLog[dateStr][ganaId] = {};
+      if (!data.attendanceLog[dateStr][ganaId][slotId]) data.attendanceLog[dateStr][ganaId][slotId] = {};
+      data.attendanceLog[dateStr][ganaId][slotId].students = realStudentStatuses;
+      if (realClassSummary !== null) {
+        data.attendanceLog[dateStr][ganaId][slotId].classSummary = realClassSummary;
+      }
+      
+      data.students.forEach(student => {
+        if (realStudentStatuses[student.id]) {
+          if (!student.attendanceHistory) student.attendanceHistory = {};
+          student.attendanceHistory[dateStr] = realStudentStatuses[student.id];
+        }
+      });
+      this.save(data);
+      const gana = data.ganas.find(g => g.id === ganaId);
+      this.addActivity(`Attendance saved for ${gana ? gana.name : ganaId} on ${dateStr}`, 'tulsi');
+      return true;
     }
-    if (classGroups !== null) {
-      data.attendanceLog[dateStr][ganaId][slotId].classGroups = classGroups;
+
+    // New Class-based signature: saveAttendance(classId, dateStr, studentStatuses, classSummary)
+    if (!data.attendanceLog[dateStr][classId]) data.attendanceLog[dateStr][classId] = {};
+    
+    data.attendanceLog[dateStr][classId].students = studentStatuses;
+    if (classSummary !== null) {
+      data.attendanceLog[dateStr][classId].classSummary = classSummary;
     }
     
     data.students.forEach(student => {
@@ -710,47 +745,96 @@ export const db = {
         student.attendanceHistory[dateStr] = studentStatuses[student.id];
       }
     });
+    
     this.save(data);
-    const gana = data.ganas.find(g => g.id === ganaId);
-    this.addActivity(`Attendance saved for ${gana ? gana.name : ganaId} on ${dateStr}`, 'tulsi');
+    const cls = this.getClassById(classId);
+    this.addActivity(`Attendance saved for ${cls ? cls.name : classId} on ${dateStr}`, 'tulsi');
     return true;
   },
 
-  isClassComplete(ganaId, dateStr, slotId) {
+  isClassComplete(classId, dateStr) {
     const data = this.get();
-    const slotEntry = data.attendanceLog?.[dateStr]?.[ganaId]?.[slotId];
-    if (!slotEntry) return false;
-    
-    const hasAttendance = slotEntry.students && Object.keys(slotEntry.students).length > 0;
-    const hasSummary = slotEntry.classSummary && slotEntry.classSummary.trim().length > 0;
-    
+    const entry = data.attendanceLog?.[dateStr]?.[classId];
+    if (!entry) return false;
+    const hasAttendance = entry.students && Object.keys(entry.students).length > 0;
+    const hasSummary = entry.classSummary && entry.classSummary.trim().length > 0;
     return hasAttendance && hasSummary;
   },
   
-  getAttendanceStats(ganaId, days = 7) {
+  getAttendanceStats(id, days = 7) {
     const data = this.get();
-    const ganaStudents = data.students.filter(s => s.ganaId === ganaId);
     const stats = [];
-    for (let i = days; i >= 1; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayLog = (data.attendanceLog[dateStr] || {})[ganaId] || {};
-      let present = 0, total = ganaStudents.length;
-      ganaStudents.forEach(s => { 
-        let wasPresent = false;
-        // New canonical format: slot.students[sid]
-        Object.values(dayLog).forEach(slotEntry => {
-          if (slotEntry && typeof slotEntry === 'object') {
-            const students = slotEntry.students || slotEntry;
-            if (students[s.id] === 'Present') wasPresent = true;
-          }
+    
+    if (id.startsWith('cls_')) {
+      const cls = this.getClassById(id);
+      if (!cls) return [];
+      const classStudents = cls.studentIds || [];
+      for (let i = days; i >= 1; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const log = data.attendanceLog?.[dateStr]?.[id];
+        
+        let present = 0;
+        let total = classStudents.length;
+        
+        if (log && log.students) {
+          classStudents.forEach(sId => {
+            if (log.students[sId] === 'Present') present++;
+          });
+        }
+        stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });
+      }
+    } else if (id.startsWith('gan_')) {
+      const ganaStudents = data.students.filter(s => s.ganaId === id);
+      const classesForGana = (data.classes || []).filter(c => c.schedule && c.schedule.some(s => s.ganaId === id));
+      const classIds = classesForGana.map(c => c.id);
+      
+      for (let i = days; i >= 1; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        let present = 0;
+        let total = ganaStudents.length;
+        
+        ganaStudents.forEach(s => {
+          let wasPresent = false;
+          classIds.forEach(cId => {
+            const log = data.attendanceLog?.[dateStr]?.[cId];
+            if (log && log.students && log.students[s.id] === 'Present') {
+              wasPresent = true;
+            }
+          });
+          if (wasPresent) present++;
         });
-        if (wasPresent) present++;
-      });
-      stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });
+        stats.push({ date: dateStr, present, total, pct: total > 0 ? Math.round((present / total) * 100) : 0 });
+      }
     }
     return stats;
+  },
+
+  // ─── Classes CRUD ───
+  getAllClasses() {
+    return this.get().classes || [];
+  },
+  getClassById(id) {
+    return this.getAllClasses().find(c => c.id === id) || null;
+  },
+  updateClass(id, payload) {
+    const data = this.get();
+    if (!data.classes) data.classes = [];
+    const idx = data.classes.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      data.classes[idx] = { ...data.classes[idx], ...payload };
+      this.save(data);
+      this.addActivity(`Updated class: ${data.classes[idx].name}`, 'blue');
+      return data.classes[idx];
+    }
+    return null;
+  },
+  getUsers() {
+    return this.get().users || [];
   },
 
   // ─── Timetable ───
@@ -790,10 +874,11 @@ export const db = {
     return ranges.find(r => mins >= r.start && mins <= r.end) || null;
   },
 
-  saveTimetableSlot(ganaId, slotId, details) {
+  saveTimetableSlot(ganaId, slotId, classIds) {
     const data = this.get();
+    if (!data.timetable) data.timetable = {};
     if (!data.timetable[ganaId]) data.timetable[ganaId] = {};
-    data.timetable[ganaId][slotId] = { ...data.timetable[ganaId][slotId], ...details };
+    data.timetable[ganaId][slotId] = classIds;
     this.save(data);
     const gana = data.ganas.find(g => g.id === ganaId);
     this.addActivity(`Updated ${slotId} timetable for ${gana ? gana.name : ganaId}`, 'blue');

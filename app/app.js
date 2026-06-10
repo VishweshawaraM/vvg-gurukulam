@@ -207,15 +207,7 @@ function buildSidebarHTML(user, panchangam, isDocAllowed, unreadAnnCount) {
           </div>
         </div>
 
-        <!-- Logout -->
-        <div class="sidebar-footer">
-          <button class="btn-logout" id="logout-btn">
-            <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2.2;">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            <span>प्रस्थानम् (Logout)</span>
-          </button>
-        </div>
+        <!-- Logout option removed -->
       </aside>
 
       <!-- ─── Main Container ─── -->
@@ -334,7 +326,10 @@ export const app = {
       mountNode.innerHTML = buildSidebarHTML(user, panchangam, isDocAllowed, unreadAnnCount);
 
       // Bind events
-      document.getElementById('logout-btn').addEventListener('click', () => this.handleLogout());
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => this.handleLogout());
+      }
 
       const mobileToggle = document.getElementById('mobile-toggle-btn');
       if (mobileToggle) {

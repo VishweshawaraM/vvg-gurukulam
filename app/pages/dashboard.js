@@ -24,8 +24,9 @@ export function renderDashboard(container, appInstance) {
   let totalPresent = 0, totalStudentsForAttendance = 0;
   let isAttendanceMarkedToday = false;
 
-  ganas.forEach(gana => {
-    const stats = db.getAttendanceStats(gana.id, 1);
+  const classes = db.getAllClasses();
+  classes.forEach(cls => {
+    const stats = db.getAttendanceStats(cls.id, 1);
     if (stats && stats.length > 0 && stats[0].total > 0) {
       isAttendanceMarkedToday = true;
       totalPresent += stats[0].present;
@@ -93,8 +94,16 @@ export function renderDashboard(container, appInstance) {
       else if (currentHour < 17) slotKey = 'slot_4';
       else slotKey = 'slot_5';
 
-      if (slots[slotKey] && slots[slotKey].subject) {
-        todaySchedules.push({ gana, slot: slots[slotKey], slotKey });
+      const classIds = slots[slotKey] || [];
+      if (Array.isArray(classIds) && classIds.length > 0) {
+        classIds.forEach(cId => {
+          const cls = db.getClassById(cId);
+          if (cls) {
+            todaySchedules.push({ gana, slot: { subject: cls.name, engSubject: cls.subject, room: gana.room || '' }, slotKey });
+          }
+        });
+      } else if (classIds && typeof classIds === 'object' && classIds.subject) { // Fallback for old object format
+        todaySchedules.push({ gana, slot: classIds, slotKey });
       }
     }
   });

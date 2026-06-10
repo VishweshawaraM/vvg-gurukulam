@@ -187,35 +187,37 @@ export function renderGanas(container, appInstance) {
                 </div>
               ` : `
                 <div style="display: flex; flex-direction: column; gap: 12px; max-height: 480px; overflow-y: auto; padding-right: 4px;">
-                  ${days.map(day => {
-                    const daySlots = weeklyTimetable[day] || {};
-                    const filledSlots = Object.entries(daySlots).filter(([k, v]) => v && v.subject);
+                  ${(() => {
+                    const dbSlots = db.getTimeSlots();
+                    const slotIds = ['slot_1','slot_2','slot_3','slot_4','slot_5','slot_6','slot_7'];
+                    let renderedAny = false;
+                    const html = slotIds.map(slotId => {
+                      const slotInfo = dbSlots[slotId] || { label: slotId, labelEn: slotId, time: '' };
+                      const classIds = weeklyTimetable[slotId] || [];
+                      const slotClasses = classIds.map(id => db.getClassById(id)).filter(Boolean);
+                      if (slotClasses.length === 0) return '';
+                      
+                      renderedAny = true;
+                      return `
+                        <div style="padding: 0.75rem; background-color: var(--gold-light); border: 1px solid rgba(196,164,104,0.3); border-radius: var(--radius-md);">
+                          <h4 style="font-family: var(--font-header); font-size: 0.82rem; color: var(--sandalwood); border-bottom: 1px dashed var(--gold-border); padding-bottom: 3px; margin-bottom: 6px;">
+                            ${slotInfo.label} (${slotInfo.time || ''})
+                          </h4>
+                          ${slotClasses.map(c => `
+                            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; padding-bottom: 2px;">
+                              <div>
+                                <span style="font-weight: 600; color: var(--saffron-primary);">${c.name}</span> — 
+                                <span class="devanagari" style="font-weight: 500;">${c.subject}</span>
+                              </div>
+                              <div style="font-weight: 600; color: var(--sandalwood);">${c.acharyaName || 'Unassigned'}</div>
+                            </div>
+                          `).join('')}
+                        </div>
+                      `;
+                    }).join('');
                     
-                    return `
-                      <div style="padding: 0.75rem; background-color: var(--gold-light); border: 1px solid rgba(196,164,104,0.3); border-radius: var(--radius-md);">
-                        <h4 style="font-family: var(--font-header); font-size: 0.85rem; color: var(--sandalwood); border-bottom: 1px dashed var(--gold-border); padding-bottom: 3px; margin-bottom: 6px;">
-                          ${day}
-                        </h4>
-                        
-                        ${filledSlots.length === 0 
-                          ? `<p style="font-size: 0.75rem; color: var(--sandalwood-light); font-style: italic;">No classes scheduled.</p>`
-                          : filledSlots.map(([slotKey, details]) => {
-                              const slotTime = slots.find(s => s.id === slotKey)?.label || '';
-                              const slotAch = acharyas.find(a => a.id === details.acharyaId)?.name.split(' ').slice(1).join(' ') || 'Acharya';
-                              return `
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; padding-bottom: 2px;">
-                                  <div>
-                                    <span style="font-weight: 600; color: var(--saffron-primary);">${slotTime}</span> — 
-                                    <span class="devanagari" style="font-weight: 500;">${details.subject}</span>
-                                    <span style="font-size: 0.7rem; color: var(--sandalwood-light);">(${details.engSubject})</span>
-                                  </div>
-                                  <div style="font-weight: 600; color: var(--sandalwood);">${slotAch}</div>
-                                </div>
-                              `;
-                            }).join('')}
-                      </div>
-                    `;
-                  }).join('')}
+                    return renderedAny ? html : `<p style="font-size:0.8rem; color:var(--sandal-light); text-align:center; padding:3rem;">No classes scheduled for this Gana.</p>`;
+                  })()}
                 </div>
               `}
           </div>

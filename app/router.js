@@ -30,8 +30,14 @@ export const router = {
   },
 
   getUserSession() {
-    const user = sessionStorage.getItem('vvg_user');
-    return user ? JSON.parse(user) : null;
+    return {
+      id: "usr_vedavijnanagurukulam",
+      name: "Pradhana Acharyah",
+      nameSa: "प्रधानाचार्यः",
+      role: "Admin",
+      email: "vedavijnanagurukulam@gmail.com",
+      ganaId: null
+    };
   },
 
   async handleRouting() {

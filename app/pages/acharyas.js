@@ -188,21 +188,27 @@ export function renderAcharyas(container, appInstance) {
     const classes = [];
     Object.entries(tt).forEach(([ganaId, ganaSlots]) => {
       const gana = ganas.find(g => g.id === ganaId);
-      Object.entries(ganaSlots).forEach(([slotId, slotData]) => {
-        if (slotData && slotData.teacher) {
-          const nameMatch = a.name.toLowerCase().split(' ').some(w =>
-            w.length > 3 && (slotData.teacher || '').toLowerCase().includes(w)
-          );
-          if (nameMatch) {
-            const slotInfo = slots[slotId] || {};
-            classes.push({
-              time:    slotInfo.time || '',
-              label:   slotInfo.labelEn || slotId,
-              subject: slotData.subject || '',
-              eng:     slotData.engSubject || '',
-              gana:    gana ? gana.name : ganaId
-            });
-          }
+      Object.entries(ganaSlots).forEach(([slotId, classIds]) => {
+        if (Array.isArray(classIds)) {
+          classIds.forEach(cId => {
+            const cls = db.getClassById(cId);
+            if (cls) {
+              const emailMatch = cls.acharyaId && a.email && cls.acharyaId.toLowerCase() === a.email.toLowerCase();
+              const nameMatch = cls.acharyaName && a.name && cls.acharyaName.toLowerCase().split(' ').some(w =>
+                w.length > 3 && a.name.toLowerCase().includes(w)
+              );
+              if (emailMatch || nameMatch) {
+                const slotInfo = slots[slotId] || {};
+                classes.push({
+                  time:    slotInfo.time || '',
+                  label:   slotInfo.labelEn || slotId,
+                  subject: cls.name || '',
+                  eng:     cls.subject || '',
+                  gana:    gana ? gana.name : ganaId
+                });
+              }
+            }
+          });
         }
       });
     });

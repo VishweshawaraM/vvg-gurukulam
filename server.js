@@ -257,25 +257,27 @@ function serveFile(filePath, res) {
   });
 }
 
-// ── Helper: Authentication ────────────────────────────────
+// ── Helper: Authentication (Bypassed) ─────────────────────
 function requireAuth(req, res) {
-  const token = req.headers['x-session-token'];
-  const user = SESSIONS[token];
-  if (!user) {
-    jsonRes(res, 401, { success: false, message: 'Unauthorized' });
-    return null;
-  }
-  return user;
+  return {
+    id: "usr_vedavijnanagurukulam",
+    name: "Pradhana Acharyah",
+    nameSa: "प्रधानाचार्यः",
+    role: "Admin",
+    email: "vedavijnanagurukulam@gmail.com",
+    ganaId: null
+  };
 }
 
 function requireAdmin(req, res) {
-  const user = requireAuth(req, res);
-  if (!user) return null;
-  if (user.role !== 'Admin') {
-    jsonRes(res, 403, { success: false, message: 'Forbidden: Admin access required' });
-    return null;
-  }
-  return user;
+  return {
+    id: "usr_vedavijnanagurukulam",
+    name: "Pradhana Acharyah",
+    nameSa: "प्रधानाचार्यः",
+    role: "Admin",
+    email: "vedavijnanagurukulam@gmail.com",
+    ganaId: null
+  };
 }
 
 // ── Main server ───────────────────────────────────────────
@@ -405,6 +407,10 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await parseBody(req);
       if (body && body.students) {
+        // SAFEGUARD: Prevent accidental overwrite of the entire database with an empty array
+        if (Array.isArray(body.students) && body.students.length === 0) {
+           return jsonRes(res, 400, { success: false, message: 'Safeguard: Cannot push an empty students list to the server. If this is intentional, contact the administrator.' });
+        }
         await fetch(`${FIREBASE}/vvg_database.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

@@ -85,6 +85,7 @@ export function renderAttendance(container, appInstance) {
       </div>
 
       <!-- Gana Selector Chips -->
+      <div id="gana-filter-container" style="display: ${activeTab === 'mark' ? 'none' : 'block'};">
       <div class="chip-filter" id="gana-chips" style="margin-bottom: 1.5rem; flex-wrap: wrap;">
         ${ganas.map(g => `
           <button class="chip ${g.id === selectedGanaId ? 'active' : ''}" data-gana-id="${g.id}"
@@ -94,6 +95,7 @@ export function renderAttendance(container, appInstance) {
         `).join('')}
       </div>
 
+      </div>
       <!-- Content -->
       <div id="attendance-content-area"></div>
 
@@ -124,6 +126,9 @@ export function renderAttendance(container, appInstance) {
           </div>
         </div>
       ` : ''}
+      <!-- Attendance Modal Container -->
+      <div id="att-backdrop" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(45,26,16,0.5);backdrop-filter:blur(4px);z-index:499;opacity:0;transition:opacity 0.3s ease;"></div>
+      <div id="att-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);background:var(--bg-parchment);border:1.5px solid var(--gold-solid);border-radius:var(--radius-lg);padding:2rem;width:500px;max-width:95vw;z-index:500;box-shadow:0 20px 60px rgba(45,26,16,0.25);opacity:0;pointer-events:none;transition:transform 0.3s cubic-bezier(.34,1.56,.64,1),opacity 0.3s ease;overflow-y:auto;max-height:85vh;"></div>
     `;
 
     // Tab bindings
@@ -164,38 +169,40 @@ export function renderAttendance(container, appInstance) {
     const target = container.querySelector('#attendance-content-area');
     if (!target) return;
 
-    const ganaStudents = db.getAllStudents().filter(s => s.ganaId === selectedGanaId);
-    const selectedGana = ganas.find(g => g.id === selectedGanaId);
+    if (activeTab === 'mark') {
+      renderMarkTab(target);
+    } else {
+      const ganaStudents = db.getAllStudents().filter(s => s.ganaId === selectedGanaId);
+      const selectedGana = ganas.find(g => g.id === selectedGanaId);
 
-    if (ganaStudents.length === 0) {
-      target.innerHTML = `<div class="gurukula-card" style="text-align:center; padding: 3rem; color:var(--sandal-light);">
-        <p>No students assigned to ${selectedGana?.name || 'this Gana'} yet.</p>
-      </div>`;
-      return;
+      if (ganaStudents.length === 0) {
+        target.innerHTML = `<div class="gurukula-card" style="text-align:center; padding: 3rem; color:var(--sandal-light);">
+          <p>No students assigned to ${selectedGana?.name || 'this Gana'} yet.</p>
+        </div>`;
+        return;
+      }
+      
+      if (activeTab === 'register') renderRegisterTab(target, ganaStudents, selectedGana);
+      else if (activeTab === 'analytics') renderAnalyticsTab(target, ganaStudents, selectedGana);
     }
-
-    if (activeTab === 'mark') renderMarkTab(target, ganaStudents, selectedGana);
-    else if (activeTab === 'register') renderRegisterTab(target, ganaStudents, selectedGana);
-    else if (activeTab === 'analytics') renderAnalyticsTab(target, ganaStudents, selectedGana);
   }
 
-  function renderMarkTab(target, ganaStudents, selectedGana) {
-    const slots = db.getTimeSlots();
-    const allAcharyas = db.getAllAcharyas();
+  function renderMarkTab(target) {
+    const allClasses = db.getAllClasses();
+    const isTeacher = user && user.role === 'Acharya';
+    const myClasses = isTeacher ? allClasses.filter(c => c.acharyaId === user.email) : allClasses;
+
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const selectedDateObj = new Date(selectedDateStr);
     const dayName = dayNames[selectedDateObj.getDay()];
-
-    const dailyTimetable = db.getTimetable(selectedGanaId) || {};
 
     let html = `
       <div class="gurukula-card framed">
         <div class="card-header">
           <h3 class="card-title">
             <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span>${selectedGana?.name || ''} — Class Log & Attendance (${dayName})</span>
+            <span>${isTeacher ? 'My Classes' : 'All Classes'} — Class Log & Attendance (${dayName})</span>
           </h3>
-          <span class="card-sanskrit-tag" style="color:${selectedGana?.color || 'var(--saffron-royal)'};">${selectedGana?.englishName || ''}</span>
         </div>
 
         <div style="margin-bottom: 1.5rem;">
@@ -205,127 +212,72 @@ export function renderAttendance(container, appInstance) {
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
     `;
 
-    Object.keys(slots).forEach(slotId => {
-      const slotInfo = slots[slotId];
-      const timetableDetails = dailyTimetable[slotId] || {};
-      // getClassLog returns metadata fields (no students)
-      const classLog = db.getClassLog(selectedGanaId, selectedDateStr, slotId) || {};
-      // getAttendance with slotId returns the students object directly
-      const slotStudents = db.getAttendance(selectedGanaId, selectedDateStr, slotId) || {};
+    if (myClasses.length === 0) {
+      html += `<div style="text-align:center; padding: 2rem; color:var(--sandal-light);">No classes assigned to you.</div>`;
+    }
 
-      // Merge timetable details with dynamic slot logs if saved on this date
-      const subject = classLog.subject || timetableDetails.subject || '';
-      const engSubject = classLog.engSubject || timetableDetails.engSubject || '';
-      const teacher = classLog.teacher || timetableDetails.teacher || '';
-      const teacherEn = classLog.teacherEn || timetableDetails.teacherEn || '';
-
-      // Detect Veda/Shastra specialization
-      let eligibleStudents = ganaStudents;
-      const sub = (engSubject || '').toLowerCase() + ' ' + (subject || '').toLowerCase();
-      let detectedType = 'All Students';
+    myClasses.forEach(cls => {
+      const attendanceRecord = db.getAttendance(cls.id, selectedDateStr) || {};
+      const slotStudents = attendanceRecord.students || {};
+      const classSummary = attendanceRecord.classSummary || '';
       
-      if (sub.includes('vyakarana') || sub.includes('kaumudi') || sub.includes('mahabhashya') || sub.includes('manorama')) {
-          detectedType = 'Vyakarana Students';
-      } else if (sub.includes('vedanta') || sub.includes('sutram') || sub.includes('advaita') || sub.includes('bhashyam')) {
-          detectedType = 'Vedanta Students';
-      } else if (sub.includes('mimamsa') || sub.includes('nyaya') || sub.includes('tarka')) {
-          detectedType = 'Mimamsa/Nyaya Students';
-      }
+      const isComplete = db.isClassComplete(cls.id, selectedDateStr);
 
       html += `
         <div class="gurukula-card" style="margin: 0; background: var(--gold-light); border: 1px solid var(--gold-border); padding: 1.25rem;">
-          <!-- Header Row -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--gold-border); padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
              <div>
-              <span style="font-size: 0.72rem; font-weight: 800; font-family: var(--font-sanskrit-ui); text-transform: none; color: var(--saffron-royal); letter-spacing: 0.5px; display: block;">
-                ${slotInfo?.label || ''} <span style="font-family: var(--font-ui); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase;">(${slotInfo?.labelEn || ''})</span>
-                ${db.isClassComplete(selectedGanaId, selectedDateStr, slotId) ? '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:var(--forest-tulsi); color:white; font-size:0.55rem; font-family:var(--font-ui);">COMPLETED</span>' : '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:#e0e0e0; color:#555; font-size:0.55rem; font-family:var(--font-ui);">INCOMPLETE</span>'}
+              <span style="font-size: 1.1rem; font-weight: 800; font-family: var(--font-sanskrit-ui); color: var(--saffron-royal); display: block;">
+                ${cls.name}
+                ${isComplete ? '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:var(--forest-tulsi); color:white; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">COMPLETED</span>' : '<span style="display:inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 4px; background:#e0e0e0; color:#555; font-size:0.55rem; font-family:var(--font-ui); vertical-align:middle;">INCOMPLETE</span>'}
               </span>
-              <span style="font-family: var(--font-ui); font-size: 1.25rem; font-weight: 800; color: var(--charcoal-sandal);">
-                ${slotInfo?.time || ''}
+              <span style="font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600; color: var(--charcoal-sandal);">
+                ${cls.subject}
               </span>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--sandalwood);">Filter Roster by Section:</span>
-              <select class="spec-filter-select form-control" style="width: 190px; padding: 0.35rem 0.65rem; font-size: 0.78rem; height: auto; background-color: white; font-family: var(--font-sanskrit-ui);">
-                <option value="all" ${detectedType === 'All Students' ? 'selected' : ''}>All Sections (सर्वे)</option>
-                <option value="vyakarana" ${detectedType === 'Vyakarana Students' ? 'selected' : ''}>Vyakarana (व्याकरणम्)</option>
-                <option value="vedanta" ${detectedType === 'Vedanta Students' ? 'selected' : ''}>Vedanta (वेदान्तः)</option>
-                <option value="junior">Junior (None)</option>
-              </select>
-            </div>
+            ${!isTeacher ? `<div style="font-size: 0.75rem; font-weight: bold; color: var(--sandal-light);">Acharya: ${cls.acharyaName || 'Unassigned'}</div>` : ''}
           </div>
           
-          <form class="class-log-form" data-slot-id="${slotId}">
-            <!-- Dynamic Fields -->
-            <div class="form-row" style="margin-bottom: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">विषयः (Sanskrit Subject)</label>
-                <input type="text" name="subject" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" placeholder="e.g. Open Study / Open Class" value="${subject}">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Subject (English)</label>
-                <input type="text" name="engSubject" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" placeholder="e.g. Open Study / Open Class" value="${engSubject}">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">आचार्यः (Teacher / Guru)</label>
-                <select name="teacherId" class="form-control" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; height: auto; background-color: white;">
-                  <option value="">Select Acharya / Guru</option>
-                  ${allAcharyas.map(a => {
-                    const isSel = classLog.teacherId === a.id || (!classLog.teacherId && (teacher === a.name || teacherEn === a.name || teacherEn.includes(a.name.split(' ')[0])));
-                    return `<option value="${a.id}" ${isSel ? 'selected' : ''}>${a.name} (${a.sanskritName})</option>`;
-                  }).join('')}
-                </select>
-              </div>
-            </div>
-
-            <!-- Student Checkbox Grid -->
+          <form class="class-log-form" data-class-id="${cls.id}">
             <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--sandal-light); margin-bottom: 6px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
               <span>छात्र-उपस्थितिः (Student Checkboxes)</span>
-              <button type="button" class="btn btn-ghost btn-sm expand-roster-btn" style="font-size: 0.65rem; padding: 0.2rem 0.5rem;">+ Add Students from other Ganas</button>
             </div>
+            
             <div class="student-attendance-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; max-height: 200px; overflow-y: auto; padding: 4px; border: 1px solid var(--gold-border); background: white; border-radius: 6px;">
-              ${db.getAllStudents().map(s => {
-                const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
-                const isCurrentGana = s.ganaId === selectedGanaId;
-                
-                let shouldDisplay = isCurrentGana;
-                if (isCurrentGana) {
-                  if (detectedType === 'Vyakarana Students') {
-                    shouldDisplay = (s.section || 'None') === 'Vyakarana' || (s.section || 'None') === 'None';
-                  } else if (detectedType === 'Vedanta Students') {
-                    shouldDisplay = (s.section || 'None') === 'Vedanta' || (s.section || 'None') === 'None';
-                  }
-                }
-                
-                const ganaObj = db.getGanaById(s.ganaId);
-                const ganaName = ganaObj ? ganaObj.name : '';
-                
-                return `
-                <label class="student-label" data-section="${s.section || 'None'}" data-gana="${s.ganaId}" style="display: ${shouldDisplay ? 'flex' : 'none'}; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
-                  <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
-                  <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
-                    ${!isCurrentGana ? `<span style="font-size: 0.6rem; color: var(--saffron-royal);">${ganaName}</span>` : ''}
-                  </div>
-                </label>
-                `;
-              }).join('')}
+              ${(cls.studentIds || []).length === 0 ? `<div style="padding:10px; color:var(--sandal-light); font-size:0.8rem; grid-column: 1 / -1;">No students assigned to this class.</div>` : 
+                (cls.studentIds || []).map(studentId => {
+                  const s = db.getStudentById(studentId);
+                  if (!s) return '';
+                  const isPresent = !slotStudents[s.id] || slotStudents[s.id] === 'Present';
+                  const ganaObj = db.getGanaById(s.ganaId);
+                  
+                  return `
+                  <label class="student-label" style="display: flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 6px 10px; border: 1px solid var(--gold-border); border-radius: 4px; cursor: pointer; margin-bottom: 0;">
+                    <input type="checkbox" name="student_${s.id}" value="${s.id}" ${isPresent ? 'checked' : ''} style="accent-color: var(--forest-tulsi); width: 16px; height: 16px; flex-shrink: 0;">
+                    <div style="display: flex; flex-direction: column; overflow: hidden;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--charcoal-sandal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.name}">${s.name}</span>
+                      <span style="font-size: 0.6rem; color: var(--saffron-royal);">${ganaObj?.name||''}</span>
+                    </div>
+                  </label>
+                  `;
+                }).join('')}
             </div>
 
-            <!-- Notes -->
             <div class="form-group" style="margin-bottom: 1.25rem;">
               <label class="form-label" style="font-size: 0.72rem; margin-bottom: 3px;">Class Summary (What was taught today? Required) *</label>
-              <textarea name="classSummary" class="form-control" rows="3" style="font-size: 0.85rem;" placeholder="Write a brief summary (approx 3-4 sentences) describing what was taught today..." required minlength="15">${classLog.classSummary || ''}</textarea>
+              <textarea name="classSummary" class="form-control" rows="3" style="font-size: 0.85rem;" placeholder="Write a brief summary (approx 3-4 sentences) describing what was taught today..." required minlength="10">${classSummary}</textarea>
             </div>
 
-            <!-- Footer Buttons -->
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <button type="submit" class="btn btn-saffron" style="padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 800;">
-                  Save Slot Attendance
+                  Save Class Attendance
                 </button>
                 <button type="button" class="btn btn-ghost btn-sm mark-all-btn" style="font-size: 0.78rem;">Toggle All</button>
+                <button type="button" class="btn btn-ghost btn-sm btn-manage-roster" data-class-id="${cls.id}" style="font-size: 0.78rem; border-color: var(--gold-border);">
+                  <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Pick Students
+                </button>
               </div>
               <span class="save-indicator" style="font-size: 0.8rem; color: var(--forest-tulsi); font-weight: 800; display: none; align-items: center; gap: 4px;">
                 <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -342,124 +294,70 @@ export function renderAttendance(container, appInstance) {
     
     // Bind form submits
     target.querySelectorAll('.class-log-form').forEach(form => {
-      const slotId = form.getAttribute('data-slot-id');
+      const classId = form.getAttribute('data-class-id');
       
-      // Filter dropdown binding
-      const specSelect = form.closest('.gurukula-card').querySelector('.spec-filter-select');
-      specSelect.addEventListener('change', (e) => {
-        const val = e.target.value;
-        form.querySelectorAll('.student-label').forEach(label => {
-          const section = label.getAttribute('data-section');
-          const isGanaMatch = label.getAttribute('data-gana') === selectedGanaId || label.classList.contains('expanded-visible');
-          
-          if (!isGanaMatch) {
-             label.style.display = 'none';
-             return;
-          }
-          
-          if (val === 'all') {
-            label.style.display = 'flex';
-          } else if (val === 'vyakarana') {
-            label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
-          } else if (val === 'vedanta') {
-            label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
-          } else if (val === 'junior') {
-            label.style.display = (section === 'None') ? 'flex' : 'none';
-          }
-        });
-      });
-      
-      const expandBtn = form.querySelector('.expand-roster-btn');
-      if (expandBtn) {
-        expandBtn.addEventListener('click', () => {
-          const isExpanded = expandBtn.classList.contains('expanded');
-          const currentFilter = specSelect.value;
-          
-          if (isExpanded) {
-            expandBtn.classList.remove('expanded');
-            expandBtn.innerText = '+ Add Students from other Ganas';
-            form.querySelectorAll('.student-label').forEach(label => {
-              label.classList.remove('expanded-visible');
-              const section = label.getAttribute('data-section');
-              const isCurrentGana = label.getAttribute('data-gana') === selectedGanaId;
-              
-              if (!isCurrentGana) {
-                 label.style.display = 'none';
-              } else {
-                 if (currentFilter === 'all') label.style.display = 'flex';
-                 else if (currentFilter === 'vyakarana') label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
-                 else if (currentFilter === 'vedanta') label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
-                 else if (currentFilter === 'junior') label.style.display = (section === 'None') ? 'flex' : 'none';
-              }
-            });
-          } else {
-            expandBtn.classList.add('expanded');
-            expandBtn.innerText = '- Hide other Ganas';
-            form.querySelectorAll('.student-label').forEach(label => {
-              label.classList.add('expanded-visible');
-              const section = label.getAttribute('data-section');
-              if (currentFilter === 'all') label.style.display = 'flex';
-              else if (currentFilter === 'vyakarana') label.style.display = (section === 'Vyakarana' || section === 'None') ? 'flex' : 'none';
-              else if (currentFilter === 'vedanta') label.style.display = (section === 'Vedanta' || section === 'None') ? 'flex' : 'none';
-              else if (currentFilter === 'junior') label.style.display = (section === 'None') ? 'flex' : 'none';
-            });
-          }
+      const toggleBtn = form.querySelector('.mark-all-btn');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          const cbs = form.querySelectorAll('input[type="checkbox"]');
+          if (cbs.length === 0) return;
+          const allChecked = Array.from(cbs).every(cb => cb.checked);
+          cbs.forEach(cb => cb.checked = !allChecked);
         });
       }
 
-      // Toggle All button
-      form.querySelector('.mark-all-btn').addEventListener('click', () => {
-        // Select only currently visible checkboxes
-        const visibleLabels = Array.from(form.querySelectorAll('.student-label')).filter(l => l.style.display !== 'none');
-        const checkboxes = visibleLabels.map(l => l.querySelector('input[type="checkbox"]'));
-        const allChecked = checkboxes.every(c => c.checked);
-        checkboxes.forEach(c => c.checked = !allChecked);
-      });
+      const manageRosterBtn = form.querySelector('.btn-manage-roster');
+      if (manageRosterBtn) {
+        manageRosterBtn.addEventListener('click', () => {
+          openRosterEditor(classId);
+        });
+      }
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const classSummary = form.querySelector('[name="classSummary"]').value.trim();
-        const subject = form.querySelector('[name="subject"]').value.trim();
-        const engSubject = form.querySelector('[name="engSubject"]').value.trim();
-        const teacherId = form.querySelector('[name="teacherId"]').value;
         
-        const ach = allAcharyas.find(a => a.id === teacherId);
-        const teacher = ach ? ach.sanskritName : '';
-        const teacherEn = ach ? ach.name : '';
-        
-        const studentStatuses = {};
-        form.querySelectorAll('.student-label').forEach(label => {
-          if (label.style.display !== 'none') {
-            const cb = label.querySelector('input[type="checkbox"]');
-            studentStatuses[cb.value] = cb.checked ? 'Present' : 'Absent';
-          }
-        });
-        
-        const present = Object.values(studentStatuses).filter(v => v === 'Present').length;
-        const absent = Object.values(studentStatuses).filter(v => v === 'Absent').length;
+        const summary = form.querySelector('textarea[name="classSummary"]').value.trim();
+        if (summary.length < 10) {
+          showToast('Please enter a valid class summary.', 'error');
+          return;
+        }
 
-        // Single atomic save: class log metadata merged with student statuses
-        // saveClassLog stores metadata, saveAttendance stores students — both under same slot key
-        db.saveClassLog(selectedGanaId, selectedDateStr, slotId, { 
-          present, absent, classSummary, subject, engSubject, teacherId, teacher, teacherEn 
+        const studentStatuses = {};
+        const checkboxes = form.querySelectorAll('input[type="checkbox"][name^="student_"]');
+        checkboxes.forEach(cb => {
+          studentStatuses[cb.value] = cb.checked ? 'Present' : 'Absent';
         });
-        db.saveAttendance(selectedGanaId, selectedDateStr, slotId, studentStatuses);
+
+        db.saveAttendance(classId, selectedDateStr, studentStatuses, summary);
+
+        const indicator = form.querySelector('.save-indicator');
+        const submitBtn = form.querySelector('button[type="submit"]');
         
-        // Reload the slot view so checkboxes reflect actual saved state
-        const ind = form.querySelector('.save-indicator');
-        ind.style.display = 'inline-flex';
-        setTimeout(() => { ind.style.display = 'none'; loadSubView(); }, 1200);
-        showToast(`✔ Attendance saved: ${subject || 'Open Class'} (${present} Present, ${absent} Absent)`, 'success');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<svg class="spin-icon" viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;display:inline-block;margin-right:6px;vertical-align:text-bottom;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Saving...`;
+        
+        setTimeout(() => {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Save Class Attendance';
+          indicator.style.display = 'flex';
+          setTimeout(() => { indicator.style.opacity = '0'; setTimeout(() => { indicator.style.display = 'none'; indicator.style.opacity = '1'; }, 300); }, 3000);
+          showToast('Attendance and Class Summary saved!', 'success');
+          
+          // Refresh view slightly later to show COMPLETION badge
+          setTimeout(() => renderMarkTab(target), 1000);
+        }, 600);
       });
     });
 
-    // Date change
-    target.querySelector('#attend-date-input').addEventListener('change', (e) => {
-      selectedDateStr = e.target.value;
-      loadSubView();
-    });
+    // Date change binding
+    const dateInput = target.querySelector('#attend-date-input');
+    if (dateInput) {
+      dateInput.addEventListener('change', (e) => {
+        selectedDateStr = e.target.value;
+        renderView();
+      });
+    }
   }
-
 
   function renderRegisterTab(target, ganaStudents, selectedGana) {
     const daysCount = 15;
@@ -506,15 +404,17 @@ export function renderAttendance(container, appInstance) {
                   const d = new Date(date);
                   const isSun = d.getDay() === 0;
                   
-                  // A student is considered present if they were marked present in AT LEAST ONE slot that day.
+                  // A student is considered present if they were marked present in AT LEAST ONE class that day.
                   let wasPresent = false;
                   let hasData = false;
-                  const allSlots = db.getTimeSlots();
-                  Object.keys(allSlots).forEach(slotId => {
-                      const log = db.getAttendance(selectedGanaId, date, slotId);
-                      if (log && log[s.id]) {
+                  const studentClasses = db.getAllClasses().filter(c => c.studentIds && c.studentIds.includes(s.id));
+                  
+                  studentClasses.forEach(cls => {
+                      const log = db.getAttendance(cls.id, date);
+                      const studentsLog = log ? (log.students || log) : null;
+                      if (studentsLog && studentsLog[s.id]) {
                           hasData = true;
-                          if (log[s.id] === 'Present') wasPresent = true;
+                          if (studentsLog[s.id] === 'Present') wasPresent = true;
                       }
                   });
 
@@ -550,6 +450,12 @@ export function renderAttendance(container, appInstance) {
 
 
   function renderAnalyticsTab(target, ganaStudents, selectedGana) {
+    target.innerHTML = `<div class="gurukula-card" style="text-align:center; padding: 3rem;">
+        <h3 style="color:var(--saffron-royal);">Class-Based Analytics coming soon!</h3>
+        <p style="color:var(--sandal-light);">Since we migrated to a flexible Class-based system, the Gana-based analytics charts are being rebuilt.</p>
+    </div>`;
+    return;
+  
     const weekStats = db.getAttendanceStats(selectedGanaId, 7);
     const avgPct = weekStats.length > 0
       ? Math.round(weekStats.reduce((a, b) => a + b.pct, 0) / weekStats.filter(s => s.total > 0).length || weekStats.length)
@@ -668,6 +574,143 @@ export function renderAttendance(container, appInstance) {
         })()}
       </div>
     `;
+  }
+
+  function openRosterEditor(classId) {
+    const cls = db.getClassById(classId);
+    if (!cls) return;
+    
+    const allStudents = db.getAllStudents();
+    const ganas = db.getAllGanas();
+    const assignedIds = new Set(cls.studentIds || []);
+    
+    const modal = container.querySelector('#att-modal');
+    const backdrop = container.querySelector('#att-backdrop');
+    
+    // Group students by Gana
+    const studentsByGana = {};
+    ganas.forEach(g => studentsByGana[g.id] = []);
+    allStudents.forEach(s => {
+      if (studentsByGana[s.ganaId]) {
+        studentsByGana[s.ganaId].push(s);
+      }
+    });
+    
+    modal.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;border-bottom:1px solid var(--sandal-div);padding-bottom:1rem;">
+        <div>
+          <h3 style="font-family:var(--font-sanskrit);font-size:1.15rem;color:var(--charcoal-sandal);margin-bottom:3px;">छात्रचयनम् (Pick Students for Class)</h3>
+          <span style="font-family:var(--font-header);font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold-solid);font-weight:900;">
+            ${cls.name} &middot; ${cls.subject}
+          </span>
+        </div>
+        <button id="roster-modal-close" style="background:none;border:1px solid var(--sandal-div);border-radius:var(--radius-sm);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--sandal-light);">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      
+      <div style="font-size:0.8rem;color:var(--sandal-light);margin-bottom:1rem;line-height:1.4;">
+        Check the students who attend this class. You can select students from any Gana or Section.
+      </div>
+      
+      <div style="display:flex;flex-direction:column;gap:12px;max-height:50vh;overflow-y:auto;padding-right:4px;">
+        ${ganas.map(g => {
+          const gStudents = studentsByGana[g.id] || [];
+          if (gStudents.length === 0) return '';
+          
+          const checkedInGana = gStudents.filter(s => assignedIds.has(s.id)).length;
+          
+          return `
+            <div style="border:1px solid var(--sandal-div);border-radius:var(--radius-sm);background:var(--bg-body);overflow:hidden;margin-bottom:8px;">
+              <div style="background:var(--gold-light);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;" class="gana-header" data-gana-id="${g.id}">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${g.color || 'var(--gold-solid)'};"></span>
+                  <span style="font-family:var(--font-sanskrit);font-size:0.9rem;font-weight:bold;color:var(--charcoal-sandal);">${g.name} (${g.englishName})</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span class="badge" style="background:rgba(197,78,34,0.15);color:var(--saffron-royal);font-size:0.7rem;padding:2px 8px;border-radius:10px;" id="badge-count-${g.id}">${checkedInGana} / ${gStudents.length} Selected</span>
+                  <button type="button" class="btn-select-all-gana" data-gana-id="${g.id}" style="background:none;border:none;color:var(--saffron-royal);font-size:0.72rem;font-weight:bold;cursor:pointer;padding:0;">All</button>
+                </div>
+              </div>
+              <div class="gana-student-list" id="list-${g.id}" style="padding:8px 12px;display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:8px;border-top:1px solid var(--sandal-div);">
+                ${gStudents.map(s => `
+                  <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;cursor:pointer;margin-bottom:0;" class="roster-student-label">
+                    <input type="checkbox" class="roster-assign-cb" data-gana-id="${g.id}" value="${s.id}" ${assignedIds.has(s.id) ? 'checked' : ''}>
+                    <span>${s.name} <span style="font-size:0.7rem;color:var(--sandal-light);">${s.section !== 'None' ? `(${s.section})` : ''}</span></span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      
+      <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--sandal-div);gap:10px;">
+        <button id="roster-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button id="roster-save-btn" class="btn btn-saffron">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Update Class Roster
+        </button>
+      </div>
+    `;
+    
+    backdrop.style.display = 'block';
+    modal.style.display = 'block';
+    setTimeout(() => {
+      modal.style.opacity = '1'; modal.style.pointerEvents = 'all';
+      modal.style.transform = 'translate(-50%,-50%) scale(1)';
+      backdrop.style.opacity = '1';
+    }, 10);
+    
+    function closeModal() {
+      modal.style.opacity = '0'; modal.style.transform = 'translate(-50%,-50%) scale(0.9)';
+      backdrop.style.opacity = '0';
+      setTimeout(() => {
+        backdrop.style.display = 'none';
+        modal.style.display = 'none';
+        modal.style.pointerEvents = 'none';
+      }, 300);
+    }
+    
+    modal.querySelector('#roster-modal-close').addEventListener('click', closeModal);
+    modal.querySelector('#roster-cancel-btn').addEventListener('click', closeModal);
+    backdrop.addEventListener('click', closeModal, { once: true });
+    
+    // Select All Gana binding
+    modal.querySelectorAll('.btn-select-all-gana').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ganaId = btn.getAttribute('data-gana-id');
+        const cbs = modal.querySelectorAll(`.roster-assign-cb[data-gana-id="${ganaId}"]`);
+        const allChecked = Array.from(cbs).every(cb => cb.checked);
+        cbs.forEach(cb => cb.checked = !allChecked);
+        
+        // Update badge count
+        const checkedCount = Array.from(cbs).filter(cb => cb.checked).length;
+        modal.querySelector(`#badge-count-${ganaId}`).textContent = `${checkedCount} / ${cbs.length} Selected`;
+      });
+    });
+    
+    // Checkbox state change badge update
+    modal.querySelectorAll('.roster-assign-cb').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const ganaId = cb.getAttribute('data-gana-id');
+        const cbs = modal.querySelectorAll(`.roster-assign-cb[data-gana-id="${ganaId}"]`);
+        const checkedCount = Array.from(cbs).filter(cb => cb.checked).length;
+        modal.querySelector(`#badge-count-${ganaId}`).textContent = `${checkedCount} / ${cbs.length} Selected`;
+      });
+    });
+    
+    // Save button binding
+    modal.querySelector('#roster-save-btn').addEventListener('click', () => {
+      const selectedStudentIds = Array.from(modal.querySelectorAll('.roster-assign-cb:checked')).map(cb => cb.value);
+      
+      db.updateClass(classId, { studentIds: selectedStudentIds });
+      showToast('Class roster updated successfully.', 'success');
+      
+      closeModal();
+      loadSubView();
+    });
   }
 
   renderView();
